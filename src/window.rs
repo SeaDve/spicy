@@ -1,5 +1,3 @@
-use std::iter;
-
 use adw::subclass::prelude::*;
 use anyhow::Result;
 use gtk::{
@@ -139,11 +137,7 @@ impl Window {
         let circuit = circuit.trim();
 
         let ngspice = imp.ngspice.get_or_try_init(NgSpice::new)?;
-        if circuit.trim().is_empty() {
-            ngspice.circuit(&[] as &[String])?;
-        } else {
-            ngspice.circuit(circuit.split('\n').chain(iter::once(".end")))?;
-        }
+        ngspice.circuit(circuit.split('\n'))?;
 
         Ok(())
     }
