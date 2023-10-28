@@ -5,6 +5,7 @@ use gtk::{
     glib::{self, clone},
     prelude::*,
 };
+use gtk_source::prelude::*;
 
 use crate::{
     application::Application,
@@ -25,9 +26,9 @@ mod imp {
         #[template_child]
         pub(super) play_button: TemplateChild<gtk::Button>,
         #[template_child]
-        pub(super) circuit_text_view: TemplateChild<gtk::TextView>,
+        pub(super) circuit_view: TemplateChild<gtk_source::View>,
         #[template_child]
-        pub(super) output_text_view: TemplateChild<gtk::TextView>,
+        pub(super) output_view: TemplateChild<gtk_source::View>,
 
         pub(super) ngspice: OnceCell<NgSpice>,
     }
@@ -66,8 +67,18 @@ mod imp {
                     }
                 }));
 
+            if let Some(language) = gtk_source::LanguageManager::default().language("spice") {
+                let circuit_buffer = self
+                    .circuit_view
+                    .buffer()
+                    .downcast::<gtk_source::Buffer>()
+                    .unwrap();
+                circuit_buffer.set_language(Some(&language));
+                circuit_buffer.set_highlight_syntax(true);
+            }
+
             ngspice::set_output(clone!(@weak obj => move |string| {
-                let output_buffer = obj.imp().output_text_view.buffer();
+                let output_buffer = obj.imp().output_view.buffer();
                 let text = if string.starts_with("stdout") {
                     let string = string.trim_start_matches("stdout").trim();
                     if string.starts_with('*') {
@@ -126,9 +137,9 @@ impl Window {
     fn start_simulator(&self) -> Result<()> {
         let imp = self.imp();
 
-        imp.output_text_view.buffer().set_text("");
+        imp.output_view.buffer().set_text("");
 
-        let circuit_buffer = imp.circuit_text_view.buffer();
+        let circuit_buffer = imp.circuit_view.buffer();
         let circuit = circuit_buffer.text(
             &circuit_buffer.start_iter(),
             &circuit_buffer.end_iter(),
