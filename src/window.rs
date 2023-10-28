@@ -71,10 +71,15 @@ mod imp {
             ngspice::set_output(clone!(@weak obj => move |string| {
                 let output_buffer = obj.imp().output_text_view.buffer();
                 let text = if string.starts_with("stdout") {
-                    format!(
-                        "{}\n",
-                        glib::markup_escape_text(string.trim_start_matches("stdout").trim())
-                    )
+                    let string = string.trim_start_matches("stdout").trim();
+                    if string.starts_with('*') {
+                        format!(
+                            "<span color=\"green\">{}</span>\n",
+                            glib::markup_escape_text(string)
+                        )
+                    } else {
+                        format!("{}\n", glib::markup_escape_text(string))
+                    }
                 } else if string.starts_with("stderr") {
                     format!(
                         "<span color=\"red\">{}</span>\n",
