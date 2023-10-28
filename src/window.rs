@@ -24,7 +24,7 @@ mod imp {
         #[template_child]
         pub(super) toast_overlay: TemplateChild<adw::ToastOverlay>,
         #[template_child]
-        pub(super) play_button: TemplateChild<gtk::Button>,
+        pub(super) run_button: TemplateChild<gtk::Button>,
         #[template_child]
         pub(super) circuit_view: TemplateChild<gtk_source::View>,
         #[template_child]
@@ -57,7 +57,7 @@ mod imp {
                 obj.add_css_class("devel");
             }
 
-            self.play_button
+            self.run_button
                 .connect_clicked(clone!(@weak obj => move |_| {
                     if let Err(err) = obj.start_simulator() {
                         tracing::error!("Failed to start simulator: {:?}", err);

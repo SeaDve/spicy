@@ -25,7 +25,8 @@
             <child type="top">
               <object class="GtkHeaderBar">
                 <child>
-                  <object class="GtkButton" id="play_button">
+                  <object class="GtkButton" id="run_button">
+                    <property name="tooltip-text">Run</property>
                     <property name="icon-name">media-playback-start-symbolic</property>
                   </object>
                 </child>
