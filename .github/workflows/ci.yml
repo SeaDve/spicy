@@ -6,27 +6,40 @@ on:
 name: CI
 
 jobs:
-  rustfmt:
-    name: Rustfmt
-    runs-on: ubuntu-latest
+  checks:
+    name: Checks
+    runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
-      - uses: actions-rs/toolchain@v1
-        with:
-          profile: minimal
-          toolchain: stable
-          override: true
-          components: rustfmt
+      # FIXME uncomment when we don't --skip ui_files anymore
+      # - name: Download dependencies
+      #   run: sudo apt -y install libgtk-4-dev
+      - name: Run checks.py
+        run: curl https://raw.githubusercontent.com/SeaDve/scripts/main/checks.py | python - --verbose --skip rustfmt typos ui_files
+
+  rustfmt:
+    name: Rustfmt
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
       - name: Create blank versions of configured file
         run: echo -e "" >> src/config.rs
       - name: Run cargo fmt
         run: cargo fmt --all -- --check
 
+  typos:
+    name: Typos
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v3
+      - name: Check for typos
+        uses: crate-ci/typos@master
+
   flatpak:
     name: Flatpak
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-22.04
     container:
-      image: bilelmoussaoui/flatpak-github-actions:gnome-44
+      image: bilelmoussaoui/flatpak-github-actions:gnome-nightly
       options: --privileged
     steps:
       - uses: actions/checkout@v3
