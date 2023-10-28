@@ -1,5 +1,5 @@
 use adw::subclass::prelude::*;
-use anyhow::Result;
+use anyhow::{Context, Result};
 use gtk::{
     gio,
     glib::{self, clone},
@@ -100,6 +100,15 @@ mod imp {
                 output_buffer.insert_markup(&mut output_buffer.end_iter(), &text);
             }));
 
+            match NgSpice::new() {
+                Ok(ngspice) => self.ngspice.set(ngspice).unwrap(),
+                Err(err) => {
+                    tracing::error!("Failed to initialize ngspice: {:?}", err);
+                    self.toast_overlay
+                        .add_toast(adw::Toast::new("Can't initialize Ngspice"));
+                }
+            }
+
             obj.load_window_size();
         }
 
@@ -146,9 +155,10 @@ impl Window {
             true,
         );
         let circuit = circuit.trim();
-
-        let ngspice = imp.ngspice.get_or_try_init(NgSpice::new)?;
-        ngspice.circuit(circuit.split('\n'))?;
+        imp.ngspice
+            .get()
+            .context("Ngspice was not initialized")?
+            .circuit(circuit.split('\n'))?;
 
         Ok(())
     }

@@ -1,5 +1,6 @@
 use std::{
     cell::{OnceCell, RefCell},
+    fmt,
     rc::Rc,
     sync::Arc,
 };
@@ -68,6 +69,12 @@ pub fn set_output(func: impl Fn(String) + 'static) {
 
 pub struct NgSpice {
     inner: Arc<elektron_ngspice::NgSpice<'static, Output>>,
+}
+
+impl fmt::Debug for NgSpice {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("NgSpice").finish()
+    }
 }
 
 impl NgSpice {
