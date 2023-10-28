@@ -28,7 +28,7 @@ mod imp {
         #[template_child]
         pub(super) circuit_view: TemplateChild<gtk_source::View>,
         #[template_child]
-        pub(super) output_view: TemplateChild<gtk_source::View>,
+        pub(super) output_view: TemplateChild<gtk::TextView>,
 
         pub(super) ngspice: OnceCell<NgSpice>,
     }
