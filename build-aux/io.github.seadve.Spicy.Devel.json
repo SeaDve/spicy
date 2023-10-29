@@ -54,6 +54,7 @@
             "name": "ngspice",
             "config-opts": [
                 "--disable-silent-rules",
+                "--disable-debug",
                 "--with-ngshared"
             ],
             "cleanup": [
