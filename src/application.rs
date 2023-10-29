@@ -43,7 +43,7 @@ mod imp {
                 .set(window.downgrade())
                 .expect("Window already set.");
 
-            app.main_window().present();
+            window.present();
         }
 
         fn startup(&self) {
@@ -68,7 +68,7 @@ glib::wrapper! {
 }
 
 impl Application {
-    fn main_window(&self) -> Window {
+    fn window(&self) -> Window {
         self.imp().window.get().unwrap().upgrade().unwrap()
     }
 
@@ -76,7 +76,7 @@ impl Application {
         let action_quit = gio::ActionEntry::builder("quit")
             .activate(move |app: &Self, _, _| {
                 // This is needed to trigger the delete event and saving the window state
-                app.main_window().close();
+                app.window().close();
                 app.quit();
             })
             .build();
@@ -95,19 +95,22 @@ impl Application {
     }
 
     fn show_about_dialog(&self) {
-        let dialog = gtk::AboutDialog::builder()
-            .logo_icon_name(APP_ID)
-            .license_type(gtk::License::Gpl30)
-            // Insert your website here
-            // .website("https://gitlab.gnome.org/bilelmoussaoui/spicy/")
-            .version(VERSION)
-            .transient_for(&self.main_window())
-            .translator_credits(gettext("translator-credits"))
+        let win = adw::AboutWindow::builder()
             .modal(true)
-            .authors(vec!["Dave Patrick Caberto"])
+            .transient_for(&self.window())
+            .application_icon(APP_ID)
+            .application_name(gettext("Spicy"))
+            .developer_name(gettext("Dave Patrick Caberto"))
+            .version(VERSION)
+            .copyright(gettext("© 2023 Dave Patrick Caberto"))
+            .license_type(gtk::License::Gpl30)
+            // Translators: Replace "translator-credits" with your names. Put a comma between.
+            .translator_credits(gettext("translator-credits"))
+            .issue_url("https://github.com/SeaDve/spicy/issues")
+            .support_url("https://github.com/SeaDve/spicy/discussions")
             .build();
 
-        dialog.present();
+        win.present();
     }
 
     pub fn run(&self) -> glib::ExitCode {
