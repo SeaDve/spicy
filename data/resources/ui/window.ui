@@ -52,6 +52,7 @@
                         <property name="left-margin">12</property>
                         <property name="right-margin">12</property>
                         <property name="monospace">True</property>
+                        <property name="input-hints">no-emoji</property>
                       </object>
                     </child>
                   </object>
