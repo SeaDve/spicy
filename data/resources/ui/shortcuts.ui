@@ -23,6 +23,23 @@
             </child>
           </object>
         </child>
+        <child>
+          <object class="GtkShortcutsGroup">
+            <property name="title" translatable="yes" context="shortcut window">File</property>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="title" translatable="yes" context="shortcut window">Open Circuit</property>
+                <property name="action-name">win.open-circuit</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="title" translatable="yes" context="shortcut window">Save Circuit</property>
+                <property name="action-name">win.save-circuit</property>
+              </object>
+            </child>
+          </object>
+        </child>
       </object>
     </child>
   </object>

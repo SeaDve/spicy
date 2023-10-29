@@ -1,5 +1,6 @@
 use adw::subclass::prelude::*;
 use anyhow::{Context, Result};
+use gettextrs::gettext;
 use gtk::{
     gio,
     glib::{self, clone},
@@ -41,6 +42,30 @@ mod imp {
 
         fn class_init(klass: &mut Self::Class) {
             klass.bind_template();
+
+            klass.install_action_async("win.open-circuit", None, |obj, _, _| async move {
+                if let Err(err) = obj.open_circuit().await {
+                    if !err
+                        .downcast_ref::<glib::Error>()
+                        .is_some_and(|error| error.matches(gtk::DialogError::Dismissed))
+                    {
+                        tracing::error!("Failed to open circuit: {:?}", err);
+                        obj.add_message_toast(&gettext("Failed to open circuit"));
+                    }
+                }
+            });
+
+            klass.install_action_async("win.save-circuit", None, |obj, _, _| async move {
+                if let Err(err) = obj.save_circuit().await {
+                    if !err
+                        .downcast_ref::<glib::Error>()
+                        .is_some_and(|error| error.matches(gtk::DialogError::Dismissed))
+                    {
+                        tracing::error!("Failed to save circuit: {:?}", err);
+                        obj.add_message_toast(&gettext("Failed to save circuit"));
+                    }
+                }
+            });
         }
 
         fn instance_init(obj: &glib::subclass::InitializingObject<Self>) {
@@ -61,9 +86,7 @@ mod imp {
                 .connect_clicked(clone!(@weak obj => move |_| {
                     if let Err(err) = obj.start_simulator() {
                         tracing::error!("Failed to start simulator: {:?}", err);
-                        obj.imp()
-                            .toast_overlay
-                            .add_toast(adw::Toast::new("Failed to start simulator"));
+                        obj.add_message_toast(&gettext("Failed to start simulator"));
                     }
                 }));
 
@@ -104,8 +127,7 @@ mod imp {
                 Ok(ngspice) => self.ngspice.set(ngspice).unwrap(),
                 Err(err) => {
                     tracing::error!("Failed to initialize ngspice: {:?}", err);
-                    self.toast_overlay
-                        .add_toast(adw::Toast::new("Can't initialize Ngspice"));
+                    obj.add_message_toast(&gettext("Can't initialize Ngspice"));
                 }
             }
 
@@ -143,6 +165,11 @@ impl Window {
         glib::Object::builder().property("application", app).build()
     }
 
+    fn add_message_toast(&self, message: &str) {
+        let toast = adw::Toast::new(message);
+        self.imp().toast_overlay.add_toast(toast);
+    }
+
     fn start_simulator(&self) -> Result<()> {
         let imp = self.imp();
 
@@ -159,6 +186,69 @@ impl Window {
             .get()
             .context("Ngspice was not initialized")?
             .circuit(circuit.split('\n'))?;
+
+        Ok(())
+    }
+
+    async fn open_circuit(&self) -> Result<()> {
+        let imp = self.imp();
+
+        let filter = gtk::FileFilter::new();
+        filter.set_property("name", gettext("Plain Text Files"));
+        filter.add_mime_type("text/plain");
+
+        let filters = gio::ListStore::new::<gtk::FileFilter>();
+        filters.append(&filter);
+
+        let dialog = gtk::FileDialog::builder()
+            .title(gettext("Open Circuit"))
+            .filters(&filters)
+            .modal(true)
+            .build();
+
+        let file = dialog.open_future(Some(self)).await?;
+        let source_file = gtk_source::File::builder().location(&file).build();
+
+        let loader = gtk_source::FileLoader::new(
+            &imp.circuit_view
+                .buffer()
+                .downcast::<gtk_source::Buffer>()
+                .unwrap(),
+            &source_file,
+        );
+        loader.load_future(glib::Priority::default()).0.await?;
+
+        Ok(())
+    }
+
+    async fn save_circuit(&self) -> Result<()> {
+        let imp = self.imp();
+
+        let filter = gtk::FileFilter::new();
+        filter.set_property("name", gettext("Plain Text Files"));
+        filter.add_mime_type("text/plain");
+
+        let filters = gio::ListStore::new::<gtk::FileFilter>();
+        filters.append(&filter);
+
+        let dialog = gtk::FileDialog::builder()
+            .title(gettext("Save Circuit"))
+            .filters(&filters)
+            .modal(true)
+            .initial_name(".cir")
+            .build();
+
+        let file = dialog.save_future(Some(self)).await?;
+        let source_file = gtk_source::File::builder().location(&file).build();
+
+        let saver = gtk_source::FileSaver::new(
+            &imp.circuit_view
+                .buffer()
+                .downcast::<gtk_source::Buffer>()
+                .unwrap(),
+            &source_file,
+        );
+        saver.save_future(glib::Priority::default()).0.await?;
 
         Ok(())
     }

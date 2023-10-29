@@ -3,6 +3,16 @@
   <menu id="primary_menu">
     <section>
       <item>
+        <attribute name="label" translatable="yes">_Open Circuit</attribute>
+        <attribute name="action">win.open-circuit</attribute>
+      </item>
+      <item>
+        <attribute name="label" translatable="yes">_Save Circuit</attribute>
+        <attribute name="action">win.save-circuit</attribute>
+      </item>
+    </section>
+    <section>
+      <item>
         <attribute name="label" translatable="yes">_Keyboard Shortcuts</attribute>
         <attribute name="action">win.show-help-overlay</attribute>
       </item>
