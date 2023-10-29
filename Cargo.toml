@@ -11,8 +11,6 @@ lto = true
 adw = { package = "libadwaita", version = "0.5", features = ["v1_4"] }
 anyhow = "1"
 elektron_ngspice = "0.1.4"
-futures-channel = "0.3.29"
-futures-util = "0.3.29"
 gettext-rs = { version = "0.7", features = ["gettext-system"] }
 gtk = { version = "0.7", package = "gtk4", features = ["v4_8"] }
 gtk_source = { package = "sourceview5", version = "0.7" }

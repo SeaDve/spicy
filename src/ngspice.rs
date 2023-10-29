@@ -6,8 +6,6 @@ use std::{
 };
 
 use anyhow::Result;
-use futures_channel::mpsc;
-use futures_util::StreamExt;
 use gtk::glib;
 
 static mut OUTPUT_INSTANCE: Output = Output::new();
@@ -16,7 +14,7 @@ type Callback = Rc<RefCell<Option<Box<dyn Fn(String)>>>>;
 
 struct Output {
     cb: OnceCell<Callback>,
-    tx: OnceCell<mpsc::UnboundedSender<String>>,
+    tx: OnceCell<glib::Sender<String>>,
 }
 
 impl Output {
@@ -39,26 +37,20 @@ impl Output {
 impl elektron_ngspice::Callbacks for Output {
     fn send_char(&mut self, string: &str) {
         if let Some(ref mut tx) = self.tx.get_mut() {
-            tx.start_send(string.to_string()).unwrap();
+            tx.send(string.to_string()).unwrap();
         } else {
-            let (tx, mut rx) = mpsc::unbounded();
+            let (tx, rx) = glib::MainContext::channel(glib::Priority::default());
             self.tx.set(tx).unwrap();
 
             let cb = self.cb().clone();
-            let ctx = glib::MainContext::default();
-            ctx.spawn_local(async move {
-                while let Some(s) = rx.next().await {
-                    if let Some(ref cb) = *cb.borrow() {
-                        cb(s);
-                    }
+            rx.attach(None, move |s| {
+                if let Some(ref cb) = *cb.borrow() {
+                    cb(s);
                 }
+                glib::ControlFlow::Continue
             });
 
-            self.tx
-                .get_mut()
-                .unwrap()
-                .start_send(string.to_string())
-                .unwrap();
+            self.tx.get_mut().unwrap().send(string.to_string()).unwrap();
         }
     }
 }

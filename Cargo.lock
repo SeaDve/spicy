@@ -992,8 +992,6 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "elektron_ngspice",
- "futures-channel",
- "futures-util",
  "gettext-rs",
  "gtk4",
  "libadwaita",
