@@ -25,8 +25,6 @@ mod imp {
         #[template_child]
         pub(super) toast_overlay: TemplateChild<adw::ToastOverlay>,
         #[template_child]
-        pub(super) run_button: TemplateChild<gtk::Button>,
-        #[template_child]
         pub(super) circuit_view: TemplateChild<gtk_source::View>,
         #[template_child]
         pub(super) output_view: TemplateChild<gtk::TextView>,
@@ -42,6 +40,13 @@ mod imp {
 
         fn class_init(klass: &mut Self::Class) {
             klass.bind_template();
+
+            klass.install_action_async("win.run-simulator", None, |obj, _, _| async move {
+                if let Err(err) = obj.run_simulator() {
+                    tracing::error!("Failed to run simulator: {:?}", err);
+                    obj.add_message_toast(&gettext("Failed to run simulator"));
+                }
+            });
 
             klass.install_action_async("win.open-circuit", None, |obj, _, _| async move {
                 if let Err(err) = obj.open_circuit().await {
@@ -81,14 +86,6 @@ mod imp {
             if PROFILE == "Devel" {
                 obj.add_css_class("devel");
             }
-
-            self.run_button
-                .connect_clicked(clone!(@weak obj => move |_| {
-                    if let Err(err) = obj.start_simulator() {
-                        tracing::error!("Failed to start simulator: {:?}", err);
-                        obj.add_message_toast(&gettext("Failed to start simulator"));
-                    }
-                }));
 
             if let Some(language) = gtk_source::LanguageManager::default().language("spice") {
                 let circuit_buffer = self
@@ -170,7 +167,7 @@ impl Window {
         self.imp().toast_overlay.add_toast(toast);
     }
 
-    fn start_simulator(&self) -> Result<()> {
+    fn run_simulator(&self) -> Result<()> {
         let imp = self.imp();
 
         imp.output_view.buffer().set_text("");

@@ -40,6 +40,17 @@
             </child>
           </object>
         </child>
+        <child>
+          <object class="GtkShortcutsGroup">
+            <property name="title" translatable="yes" context="shortcut window">Circuit</property>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="title" translatable="yes" context="shortcut window">Run Simulator</property>
+                <property name="action-name">win.run-simulator</property>
+              </object>
+            </child>
+          </object>
+        </child>
       </object>
     </child>
   </object>

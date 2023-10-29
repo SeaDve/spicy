@@ -34,6 +34,7 @@
                   <object class="GtkButton" id="run_button">
                     <property name="tooltip-text">Run</property>
                     <property name="icon-name">media-playback-start-symbolic</property>
+                    <property name="action-name">win.run-simulator</property>
                   </object>
                 </child>
                 <child type="end">
