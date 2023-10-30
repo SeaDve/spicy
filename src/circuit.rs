@@ -167,12 +167,6 @@ impl Circuit {
     }
 }
 
-impl Default for Circuit {
-    fn default() -> Self {
-        Self::draft()
-    }
-}
-
 fn copy_text_iter(text_iter: &gtk::TextIter) -> gtk::TextIter {
     use glib::translate::{FromGlibPtrFull, ToGlibPtr};
 
