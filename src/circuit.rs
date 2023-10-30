@@ -2,7 +2,12 @@ use std::pin::Pin;
 
 use anyhow::{ensure, Result};
 use futures_util::{join, Future, Stream, StreamExt};
-use gtk::{gio, glib, prelude::*, subclass::prelude::*};
+use gtk::{
+    gio,
+    glib::{self, clone},
+    prelude::*,
+    subclass::prelude::*,
+};
 use gtk_source::prelude::*;
 
 mod imp {
@@ -53,6 +58,13 @@ mod imp {
                 obj.set_language(Some(&language));
                 obj.set_highlight_syntax(true);
             }
+
+            let style_manager = adw::StyleManager::default();
+            style_manager.connect_dark_notify(clone!(@weak obj => move |_| {
+                obj.update_style_scheme();
+            }));
+
+            obj.update_style_scheme();
         }
     }
 
@@ -259,6 +271,23 @@ impl Circuit {
         io_ret?;
 
         Ok(())
+    }
+
+    fn update_style_scheme(&self) {
+        let style_manager = adw::StyleManager::default();
+        let style_scheme_manager = gtk_source::StyleSchemeManager::default();
+
+        let style_scheme = if style_manager.is_dark() {
+            style_scheme_manager
+                .scheme("Adwaita-dark")
+                .or(style_scheme_manager.scheme("classic-dark"))
+        } else {
+            style_scheme_manager
+                .scheme("Adwaita")
+                .or(style_scheme_manager.scheme("classic"))
+        };
+
+        self.set_style_scheme(style_scheme.as_ref());
     }
 }
 
