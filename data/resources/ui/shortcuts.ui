@@ -28,20 +28,26 @@
             <property name="title" translatable="yes" context="shortcut window">File</property>
             <child>
               <object class="GtkShortcutsShortcut">
-                <property name="title" translatable="yes" context="shortcut window">New Circuit</property>
+                <property name="title" translatable="yes" context="shortcut window">New</property>
                 <property name="action-name">win.new-circuit</property>
               </object>
             </child>
             <child>
               <object class="GtkShortcutsShortcut">
-                <property name="title" translatable="yes" context="shortcut window">Open Circuit</property>
+                <property name="title" translatable="yes" context="shortcut window">Open</property>
                 <property name="action-name">win.open-circuit</property>
               </object>
             </child>
             <child>
               <object class="GtkShortcutsShortcut">
-                <property name="title" translatable="yes" context="shortcut window">Save Circuit</property>
+                <property name="title" translatable="yes" context="shortcut window">Save</property>
                 <property name="action-name">win.save-circuit</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="title" translatable="yes" context="shortcut window">Save As</property>
+                <property name="action-name">win.save-circuit-as</property>
               </object>
             </child>
           </object>

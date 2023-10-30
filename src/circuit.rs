@@ -142,7 +142,7 @@ impl Circuit {
     }
 
     pub async fn save_draft_as(&self, file: &gio::File) -> Result<()> {
-        ensure!(self.file().is_none(), "Draft already saved");
+        ensure!(self.file().is_none(), "Circuit must be a draft");
 
         let imp = self.imp();
 
@@ -154,6 +154,14 @@ impl Circuit {
         self.notify_title();
 
         self.set_modified(false);
+
+        Ok(())
+    }
+
+    pub async fn save_as(&self, file: &gio::File) -> Result<()> {
+        let source_file = gtk_source::File::builder().location(file).build();
+        let saver = gtk_source::FileSaver::new(self, &source_file);
+        saver.save_future(glib::Priority::default()).0.await?;
 
         Ok(())
     }

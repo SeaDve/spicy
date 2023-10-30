@@ -14,6 +14,10 @@
         <attribute name="label" translatable="yes">_Save</attribute>
         <attribute name="action">win.save-circuit</attribute>
       </item>
+      <item>
+        <attribute name="label" translatable="yes">_Save As…</attribute>
+        <attribute name="action">win.save-circuit-as</attribute>
+      </item>
     </section>
     <section>
       <item>

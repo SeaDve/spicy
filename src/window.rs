@@ -80,6 +80,18 @@ mod imp {
                     }
                 }
             });
+
+            klass.install_action_async("win.save-circuit-as", None, |obj, _, _| async move {
+                if let Err(err) = obj.save_circuit_as().await {
+                    if !err
+                        .downcast_ref::<glib::Error>()
+                        .is_some_and(|error| error.matches(gtk::DialogError::Dismissed))
+                    {
+                        tracing::error!("Failed to save circuit as: {:?}", err);
+                        obj.add_message_toast(&gettext("Failed to save circuit as"));
+                    }
+                }
+            });
         }
 
         fn instance_init(obj: &glib::subclass::InitializingObject<Self>) {
@@ -265,6 +277,34 @@ impl Window {
 
             circuit.save_draft_as(&file).await?;
         }
+
+        Ok(())
+    }
+
+    async fn save_circuit_as(&self) -> Result<()> {
+        let circuit = self
+            .imp()
+            .circuit_view
+            .buffer()
+            .downcast::<Circuit>()
+            .unwrap();
+
+        let filter = gtk::FileFilter::new();
+        filter.set_property("name", gettext("Plain Text Files"));
+        filter.add_mime_type("text/plain");
+
+        let filters = gio::ListStore::new::<gtk::FileFilter>();
+        filters.append(&filter);
+
+        let dialog = gtk::FileDialog::builder()
+            .title(gettext("Save Circuit As"))
+            .filters(&filters)
+            .modal(true)
+            .initial_name(format!("{}.cir", circuit.title()))
+            .build();
+        let file = dialog.save_future(Some(self)).await?;
+
+        circuit.save_as(&file).await?;
 
         Ok(())
     }

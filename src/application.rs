@@ -97,6 +97,7 @@ impl Application {
         self.set_accels_for_action("win.new-circuit", &["<Control>n"]);
         self.set_accels_for_action("win.open-circuit", &["<Control>o"]);
         self.set_accels_for_action("win.save-circuit", &["<Control>s"]);
+        self.set_accels_for_action("win.save-circuit-as", &["<Control><Shift>s"]);
     }
 
     fn show_about_dialog(&self) {
