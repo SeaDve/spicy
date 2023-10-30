@@ -56,7 +56,7 @@ mod imp {
             let obj = self.obj();
 
             if obj.file().is_none() {
-                self.obj().notify_title();
+                obj.notify_title();
             }
         }
 
@@ -66,7 +66,7 @@ mod imp {
             let obj = self.obj();
 
             if obj.file().is_none() {
-                self.obj().notify_title();
+                obj.notify_title();
             }
         }
     }
