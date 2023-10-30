@@ -11,7 +11,7 @@ use crate::{
     application::Application,
     circuit::Circuit,
     config::{APP_ID, PROFILE},
-    ngspice::{self, NgSpice},
+    ngspice::NgSpice,
 };
 
 mod imp {
@@ -129,7 +129,7 @@ mod imp {
                 .sync_create()
                 .build();
 
-            ngspice::set_output(clone!(@weak obj => move |string| {
+            let ngspice_ret = NgSpice::new(clone!(@weak obj => move |string| {
                 let output_buffer = obj.imp().output_view.buffer();
                 let text = if string.starts_with("stdout") {
                     let string = string.trim_start_matches("stdout").trim();
@@ -151,8 +151,7 @@ mod imp {
                 };
                 output_buffer.insert_markup(&mut output_buffer.end_iter(), &text);
             }));
-
-            match NgSpice::new() {
+            match ngspice_ret {
                 Ok(ngspice) => self.ngspice.set(ngspice).unwrap(),
                 Err(err) => {
                     tracing::error!("Failed to initialize ngspice: {:?}", err);

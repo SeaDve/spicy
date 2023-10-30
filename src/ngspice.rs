@@ -2,22 +2,12 @@ use std::{fmt, sync::Arc};
 
 use anyhow::Result;
 
-static mut CALLBACK_INSTANCE: Callback = Callback(None);
-
 #[allow(clippy::type_complexity)]
-struct Callback(Option<Box<dyn Fn(&str)>>);
+struct Callback(Box<dyn Fn(&str)>);
 
 impl elektron_ngspice::Callbacks for Callback {
     fn send_char(&mut self, s: &str) {
-        if let Some(ref cb) = self.0 {
-            cb(s);
-        }
-    }
-}
-
-pub fn set_output(cb: impl Fn(&str) + 'static) {
-    unsafe {
-        CALLBACK_INSTANCE.0.replace(Box::new(cb));
+        (self.0)(s);
     }
 }
 
@@ -32,10 +22,21 @@ impl fmt::Debug for NgSpice {
 }
 
 impl NgSpice {
-    pub fn new() -> Result<Self> {
-        Ok(Self {
-            inner: unsafe { elektron_ngspice::NgSpice::new(&mut CALLBACK_INSTANCE)? },
-        })
+    pub fn new(cb: impl Fn(&str) + 'static) -> Result<Self> {
+        static mut CALLBACK_INSTANCE: Option<Callback> = None;
+
+        let inner = unsafe {
+            assert!(
+                CALLBACK_INSTANCE.is_none(),
+                "Multiple Ngspice instance is not supported"
+            );
+
+            CALLBACK_INSTANCE.replace(Callback(Box::new(cb)));
+
+            elektron_ngspice::NgSpice::new(CALLBACK_INSTANCE.as_mut().unwrap())?
+        };
+
+        Ok(Self { inner })
     }
 
     pub fn circuit(&self, circuit: impl IntoIterator<Item = impl Into<String>>) -> Result<()> {
