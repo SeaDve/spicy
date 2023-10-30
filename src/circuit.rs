@@ -223,5 +223,5 @@ fn parse_circuit_title(buffer: &impl IsA<gtk_source::Buffer>) -> String {
             }
         };
 
-    ret.trim().to_string()
+    ret.trim().to_lowercase().to_string()
 }
