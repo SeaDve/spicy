@@ -1,66 +1,28 @@
-use std::{
-    cell::{OnceCell, RefCell},
-    fmt,
-    rc::Rc,
-    sync::Arc,
-};
+use std::{fmt, sync::Arc};
 
 use anyhow::Result;
-use gtk::glib;
 
-static mut OUTPUT_INSTANCE: Output = Output::new();
+static mut CALLBACK_INSTANCE: Callback = Callback(None);
 
-type Callback = Rc<RefCell<Option<Box<dyn Fn(String)>>>>;
+#[allow(clippy::type_complexity)]
+struct Callback(Option<Box<dyn Fn(&str)>>);
 
-struct Output {
-    cb: OnceCell<Callback>,
-    tx: OnceCell<glib::Sender<String>>,
-}
-
-impl Output {
-    const fn new() -> Self {
-        Self {
-            cb: OnceCell::new(),
-            tx: OnceCell::new(),
-        }
-    }
-
-    fn set_cb(&mut self, func: impl Fn(String) + 'static) {
-        self.cb().replace(Some(Box::new(func)));
-    }
-
-    fn cb(&self) -> &Callback {
-        self.cb.get_or_init(|| Rc::new(RefCell::new(None)))
-    }
-}
-
-impl elektron_ngspice::Callbacks for Output {
-    fn send_char(&mut self, string: &str) {
-        if let Some(ref mut tx) = self.tx.get_mut() {
-            tx.send(string.to_string()).unwrap();
-        } else {
-            let (tx, rx) = glib::MainContext::channel(glib::Priority::default());
-            self.tx.set(tx).unwrap();
-
-            let cb = self.cb().clone();
-            rx.attach(None, move |s| {
-                if let Some(ref cb) = *cb.borrow() {
-                    cb(s);
-                }
-                glib::ControlFlow::Continue
-            });
-
-            self.tx.get_mut().unwrap().send(string.to_string()).unwrap();
+impl elektron_ngspice::Callbacks for Callback {
+    fn send_char(&mut self, s: &str) {
+        if let Some(ref cb) = self.0 {
+            cb(s);
         }
     }
 }
 
-pub fn set_output(func: impl Fn(String) + 'static) {
-    unsafe { OUTPUT_INSTANCE.set_cb(func) };
+pub fn set_output(cb: impl Fn(&str) + 'static) {
+    unsafe {
+        CALLBACK_INSTANCE.0.replace(Box::new(cb));
+    }
 }
 
 pub struct NgSpice {
-    inner: Arc<elektron_ngspice::NgSpice<'static, Output>>,
+    inner: Arc<elektron_ngspice::NgSpice<'static, Callback>>,
 }
 
 impl fmt::Debug for NgSpice {
@@ -72,7 +34,7 @@ impl fmt::Debug for NgSpice {
 impl NgSpice {
     pub fn new() -> Result<Self> {
         Ok(Self {
-            inner: unsafe { elektron_ngspice::NgSpice::new(&mut OUTPUT_INSTANCE)? },
+            inner: unsafe { elektron_ngspice::NgSpice::new(&mut CALLBACK_INSTANCE)? },
         })
     }
 
