@@ -263,9 +263,7 @@ impl Circuit {
 
 // FIXME upstream TextIter copy
 fn copy_text_iter(text_iter: &gtk::TextIter) -> gtk::TextIter {
-    use glib::translate::{FromGlibPtrFull, ToGlibPtr};
+    use glib::translate::{from_glib_full, ToGlibPtr};
 
-    unsafe {
-        gtk::TextIter::from_glib_full(gtk::ffi::gtk_text_iter_copy(text_iter.to_glib_none().0))
-    }
+    unsafe { from_glib_full(gtk::ffi::gtk_text_iter_copy(text_iter.to_glib_none().0)) }
 }
