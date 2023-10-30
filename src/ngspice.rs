@@ -2,7 +2,6 @@ use std::{fmt, sync::Arc};
 
 use anyhow::Result;
 
-#[allow(clippy::type_complexity)]
 struct Callback(Box<dyn Fn(&str)>);
 
 impl elektron_ngspice::Callbacks for Callback {
