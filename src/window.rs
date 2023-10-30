@@ -53,6 +53,10 @@ mod imp {
                 }
             });
 
+            klass.install_action_async("win.new-circuit", None, |obj, _, _| async move {
+                obj.set_circuit(Circuit::draft());
+            });
+
             klass.install_action_async("win.open-circuit", None, |obj, _, _| async move {
                 if let Err(err) = obj.open_circuit().await {
                     if !err

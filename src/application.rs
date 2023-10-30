@@ -94,6 +94,7 @@ impl Application {
         self.set_accels_for_action("window.close", &["<Control>w"]);
 
         self.set_accels_for_action("win.run-simulator", &["F5"]);
+        self.set_accels_for_action("win.new-circuit", &["<Control>n"]);
         self.set_accels_for_action("win.open-circuit", &["<Control>o"]);
         self.set_accels_for_action("win.save-circuit", &["<Control>s"]);
     }
