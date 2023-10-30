@@ -29,7 +29,25 @@
           <object class="AdwToolbarView">
             <property name="top-bar-style">raised</property>
             <child type="top">
-              <object class="GtkHeaderBar">
+              <object class="AdwHeaderBar">
+                <property name="title-widget">
+                  <object class="GtkBox">
+                    <child>
+                      <object class="GtkLabel" id="circuit_modified_status">
+                        <property name="visible">False</property>
+                        <property name="margin-end">6</property>
+                        <property name="label">•</property>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkLabel" id="circuit_title_label">
+                        <style>
+                          <class name="heading"/>
+                        </style>
+                      </object>
+                    </child>
+                  </object>
+                </property>
                 <child>
                   <object class="GtkButton" id="run_button">
                     <property name="tooltip-text">Run</property>

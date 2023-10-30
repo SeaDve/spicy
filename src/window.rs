@@ -6,10 +6,10 @@ use gtk::{
     glib::{self, clone},
     prelude::*,
 };
-use gtk_source::prelude::*;
 
 use crate::{
     application::Application,
+    circuit::Circuit,
     config::{APP_ID, PROFILE},
     ngspice::{self, NgSpice},
 };
@@ -25,11 +25,16 @@ mod imp {
         #[template_child]
         pub(super) toast_overlay: TemplateChild<adw::ToastOverlay>,
         #[template_child]
+        pub(super) circuit_title_label: TemplateChild<gtk::Label>,
+        #[template_child]
+        pub(super) circuit_modified_status: TemplateChild<gtk::Label>,
+        #[template_child]
         pub(super) circuit_view: TemplateChild<gtk_source::View>,
         #[template_child]
         pub(super) output_view: TemplateChild<gtk::TextView>,
 
         pub(super) ngspice: OnceCell<NgSpice>,
+        pub(super) circuit_binding_group: glib::BindingGroup,
     }
 
     #[glib::object_subclass]
@@ -81,21 +86,32 @@ mod imp {
     impl ObjectImpl for Window {
         fn constructed(&self) {
             self.parent_constructed();
+
             let obj = self.obj();
 
             if PROFILE == "Devel" {
                 obj.add_css_class("devel");
             }
 
-            if let Some(language) = gtk_source::LanguageManager::default().language("spice") {
-                let circuit_buffer = self
-                    .circuit_view
-                    .buffer()
-                    .downcast::<gtk_source::Buffer>()
-                    .unwrap();
-                circuit_buffer.set_language(Some(&language));
-                circuit_buffer.set_highlight_syntax(true);
-            }
+            self.circuit_binding_group
+                .bind("is-modified", &*self.circuit_modified_status, "visible")
+                .sync_create()
+                .build();
+            self.circuit_binding_group
+                .bind("title", &*self.circuit_title_label, "label")
+                .transform_to(|_, value| {
+                    let title = value.get::<String>().unwrap();
+
+                    let transformed = if title.is_empty() {
+                        gettext("New Circuit")
+                    } else {
+                        title
+                    };
+
+                    Some(transformed.into())
+                })
+                .sync_create()
+                .build();
 
             ngspice::set_output(clone!(@weak obj => move |string| {
                 let output_buffer = obj.imp().output_view.buffer();
@@ -129,6 +145,8 @@ mod imp {
             }
 
             obj.load_window_size();
+
+            obj.set_circuit(Circuit::draft());
         }
 
         fn dispose(&self) {
@@ -167,18 +185,25 @@ impl Window {
         self.imp().toast_overlay.add_toast(toast);
     }
 
+    fn set_circuit(&self, circuit: Circuit) {
+        let imp = self.imp();
+
+        imp.circuit_view.set_buffer(Some(&circuit));
+        imp.circuit_binding_group.set_source(Some(&circuit));
+    }
+
     fn run_simulator(&self) -> Result<()> {
         let imp = self.imp();
 
         imp.output_view.buffer().set_text("");
 
         let circuit_buffer = imp.circuit_view.buffer();
-        let circuit = circuit_buffer.text(
+        let circuit_text = circuit_buffer.text(
             &circuit_buffer.start_iter(),
             &circuit_buffer.end_iter(),
             true,
         );
-        let circuit = circuit.trim();
+        let circuit = circuit_text.trim();
         imp.ngspice
             .get()
             .context("Ngspice was not initialized")?
@@ -188,8 +213,6 @@ impl Window {
     }
 
     async fn open_circuit(&self) -> Result<()> {
-        let imp = self.imp();
-
         let filter = gtk::FileFilter::new();
         filter.set_property("name", gettext("Plain Text Files"));
         filter.add_mime_type("text/plain");
@@ -202,50 +225,42 @@ impl Window {
             .filters(&filters)
             .modal(true)
             .build();
-
         let file = dialog.open_future(Some(self)).await?;
-        let source_file = gtk_source::File::builder().location(&file).build();
 
-        let loader = gtk_source::FileLoader::new(
-            &imp.circuit_view
-                .buffer()
-                .downcast::<gtk_source::Buffer>()
-                .unwrap(),
-            &source_file,
-        );
-        loader.load_future(glib::Priority::default()).0.await?;
+        let circuit = Circuit::open(&file).await?;
+        self.set_circuit(circuit);
 
         Ok(())
     }
 
     async fn save_circuit(&self) -> Result<()> {
-        let imp = self.imp();
+        let circuit = self
+            .imp()
+            .circuit_view
+            .buffer()
+            .downcast::<Circuit>()
+            .unwrap();
 
-        let filter = gtk::FileFilter::new();
-        filter.set_property("name", gettext("Plain Text Files"));
-        filter.add_mime_type("text/plain");
+        if circuit.file().is_some() {
+            circuit.save().await?;
+        } else {
+            let filter = gtk::FileFilter::new();
+            filter.set_property("name", gettext("Plain Text Files"));
+            filter.add_mime_type("text/plain");
 
-        let filters = gio::ListStore::new::<gtk::FileFilter>();
-        filters.append(&filter);
+            let filters = gio::ListStore::new::<gtk::FileFilter>();
+            filters.append(&filter);
 
-        let dialog = gtk::FileDialog::builder()
-            .title(gettext("Save Circuit"))
-            .filters(&filters)
-            .modal(true)
-            .initial_name(".cir")
-            .build();
+            let dialog = gtk::FileDialog::builder()
+                .title(gettext("Save Circuit"))
+                .filters(&filters)
+                .modal(true)
+                .initial_name(format!("{}.cir", circuit.title()))
+                .build();
+            let file = dialog.save_future(Some(self)).await?;
 
-        let file = dialog.save_future(Some(self)).await?;
-        let source_file = gtk_source::File::builder().location(&file).build();
-
-        let saver = gtk_source::FileSaver::new(
-            &imp.circuit_view
-                .buffer()
-                .downcast::<gtk_source::Buffer>()
-                .unwrap(),
-            &source_file,
-        );
-        saver.save_future(glib::Priority::default()).0.await?;
+            circuit.save_draft_as(&file).await?;
+        }
 
         Ok(())
     }
