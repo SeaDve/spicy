@@ -1,9 +1,12 @@
+use std::pin::Pin;
+
 use anyhow::{ensure, Result};
+use futures_util::{join, Future, Stream, StreamExt};
 use gtk::{gio, glib, prelude::*, subclass::prelude::*};
 use gtk_source::prelude::*;
 
 mod imp {
-    use std::marker::PhantomData;
+    use std::{cell::Cell, marker::PhantomData};
 
     use gtk_source::subclass::prelude::BufferImpl;
 
@@ -18,6 +21,8 @@ mod imp {
         pub(super) title: PhantomData<String>,
         #[property(get = Self::is_modified)]
         pub(super) is_modified: PhantomData<bool>,
+        #[property(get)]
+        pub(super) busy_progress: Cell<f64>,
 
         pub(super) source_file: gtk_source::File,
     }
@@ -27,6 +32,13 @@ mod imp {
         const NAME: &'static str = "SpicyCircuit";
         type Type = super::Circuit;
         type ParentType = gtk_source::Buffer;
+
+        fn new() -> Self {
+            Self {
+                busy_progress: Cell::new(1.0),
+                ..Default::default()
+            }
+        }
     }
 
     #[glib::derived_properties]
@@ -120,21 +132,30 @@ impl Circuit {
         glib::Object::new()
     }
 
-    pub async fn open(file: &gio::File) -> Result<Self> {
-        let this: Self = glib::Object::builder().property("file", file).build();
-        let imp = this.imp();
+    pub fn for_file(file: &gio::File) -> Self {
+        glib::Object::builder().property("file", file).build()
+    }
 
-        let loader = gtk_source::FileLoader::new(&this, &imp.source_file);
-        loader.load_future(glib::Priority::default()).0.await?;
+    pub async fn load(&self) -> Result<()> {
+        ensure!(self.file().is_some(), "Circuit must not be a draft");
 
-        Ok(this)
+        let imp = self.imp();
+
+        let loader = gtk_source::FileLoader::new(self, &imp.source_file);
+        self.handle_file_io(loader.load_future(glib::Priority::default()))
+            .await?;
+
+        Ok(())
     }
 
     pub async fn save(&self) -> Result<()> {
+        ensure!(self.file().is_some(), "Circuit must not be a draft");
+
         let imp = self.imp();
 
         let saver = gtk_source::FileSaver::new(self, &imp.source_file);
-        saver.save_future(glib::Priority::default()).0.await?;
+        self.handle_file_io(saver.save_future(glib::Priority::default()))
+            .await?;
 
         self.set_modified(false);
 
@@ -149,7 +170,8 @@ impl Circuit {
         imp.source_file.set_location(Some(file));
 
         let saver = gtk_source::FileSaver::new(self, &imp.source_file);
-        saver.save_future(glib::Priority::default()).0.await?;
+        self.handle_file_io(saver.save_future(glib::Priority::default()))
+            .await?;
 
         self.notify_title();
 
@@ -161,7 +183,8 @@ impl Circuit {
     pub async fn save_as(&self, file: &gio::File) -> Result<()> {
         let source_file = gtk_source::File::builder().location(file).build();
         let saver = gtk_source::FileSaver::new(self, &source_file);
-        saver.save_future(glib::Priority::default()).0.await?;
+        self.handle_file_io(saver.save_future(glib::Priority::default()))
+            .await?;
 
         Ok(())
     }
@@ -209,6 +232,32 @@ impl Circuit {
         };
 
         ret.trim().to_lowercase().to_string()
+    }
+
+    #[allow(clippy::type_complexity)]
+    async fn handle_file_io(
+        &self,
+        (io_fut, mut progress_stream): (
+            Pin<Box<dyn Future<Output = Result<(), glib::Error>>>>,
+            Pin<Box<dyn Stream<Item = (i64, i64)>>>,
+        ),
+    ) -> Result<()> {
+        let progress_fut = async {
+            while let Some((current_n_bytes, total_n_bytes)) = progress_stream.next().await {
+                let progress = if total_n_bytes == 0 || current_n_bytes > total_n_bytes {
+                    1.0
+                } else {
+                    current_n_bytes as f64 / total_n_bytes as f64
+                };
+                self.imp().busy_progress.set(progress);
+                self.notify_busy_progress();
+            }
+        };
+
+        let (io_ret, _) = join!(io_fut, progress_fut);
+        io_ret?;
+
+        Ok(())
     }
 }
 

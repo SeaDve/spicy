@@ -29,6 +29,8 @@ mod imp {
         #[template_child]
         pub(super) circuit_title_label: TemplateChild<gtk::Label>,
         #[template_child]
+        pub(super) progress_bar: TemplateChild<gtk::ProgressBar>,
+        #[template_child]
         pub(super) circuit_view: TemplateChild<gtk_source::View>,
         #[template_child]
         pub(super) output_view: TemplateChild<gtk::TextView>,
@@ -54,7 +56,7 @@ mod imp {
             });
 
             klass.install_action_async("win.new-circuit", None, |obj, _, _| async move {
-                obj.set_circuit(Circuit::draft());
+                obj.set_circuit(&Circuit::draft());
             });
 
             klass.install_action_async("win.open-circuit", None, |obj, _, _| async move {
@@ -117,14 +119,25 @@ mod imp {
                 .bind("title", &*self.circuit_title_label, "label")
                 .transform_to(|_, value| {
                     let title = value.get::<String>().unwrap();
-
-                    let transformed = if title.is_empty() {
+                    let label = if title.is_empty() {
                         gettext("New Circuit")
                     } else {
                         title
                     };
-
-                    Some(transformed.into())
+                    Some(label.into())
+                })
+                .sync_create()
+                .build();
+            self.circuit_binding_group
+                .bind("busy-progress", &*self.progress_bar, "fraction")
+                .sync_create()
+                .build();
+            self.circuit_binding_group
+                .bind("busy-progress", &*self.progress_bar, "visible")
+                .transform_to(|_, value| {
+                    let busy_progress = value.get::<f64>().unwrap();
+                    let visible = busy_progress != 1.0;
+                    Some(visible.into())
                 })
                 .sync_create()
                 .build();
@@ -161,7 +174,7 @@ mod imp {
 
             obj.load_window_size();
 
-            obj.set_circuit(Circuit::draft());
+            obj.set_circuit(&Circuit::draft());
         }
 
         fn dispose(&self) {
@@ -200,11 +213,11 @@ impl Window {
         self.imp().toast_overlay.add_toast(toast);
     }
 
-    fn set_circuit(&self, circuit: Circuit) {
+    fn set_circuit(&self, circuit: &Circuit) {
         let imp = self.imp();
 
-        imp.circuit_view.set_buffer(Some(&circuit));
-        imp.circuit_binding_group.set_source(Some(&circuit));
+        imp.circuit_view.set_buffer(Some(circuit));
+        imp.circuit_binding_group.set_source(Some(circuit));
     }
 
     fn circuit(&self) -> Circuit {
@@ -242,8 +255,14 @@ impl Window {
             .build();
         let file = dialog.open_future(Some(self)).await?;
 
-        let circuit = Circuit::open(&file).await?;
-        self.set_circuit(circuit);
+        let circuit = Circuit::for_file(&file);
+        let prev_circuit = self.circuit();
+        self.set_circuit(&circuit);
+
+        if let Err(err) = circuit.load().await {
+            self.set_circuit(&prev_circuit);
+            return Err(err);
+        }
 
         Ok(())
     }
