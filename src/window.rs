@@ -25,9 +25,9 @@ mod imp {
         #[template_child]
         pub(super) toast_overlay: TemplateChild<adw::ToastOverlay>,
         #[template_child]
-        pub(super) circuit_title_label: TemplateChild<gtk::Label>,
-        #[template_child]
         pub(super) circuit_modified_status: TemplateChild<gtk::Label>,
+        #[template_child]
+        pub(super) circuit_title_label: TemplateChild<gtk::Label>,
         #[template_child]
         pub(super) circuit_view: TemplateChild<gtk_source::View>,
         #[template_child]
@@ -208,17 +208,17 @@ impl Window {
         imp.circuit_binding_group.set_source(Some(&circuit));
     }
 
+    fn circuit(&self) -> Circuit {
+        self.imp().circuit_view.buffer().downcast().unwrap()
+    }
+
     fn run_simulator(&self) -> Result<()> {
         let imp = self.imp();
 
         imp.output_view.buffer().set_text("");
 
-        let circuit_buffer = imp.circuit_view.buffer();
-        let circuit_text = circuit_buffer.text(
-            &circuit_buffer.start_iter(),
-            &circuit_buffer.end_iter(),
-            true,
-        );
+        let circuit = self.circuit();
+        let circuit_text = circuit.text(&circuit.start_iter(), &circuit.end_iter(), true);
         let circuit = circuit_text.trim();
         imp.ngspice
             .get()
@@ -250,12 +250,7 @@ impl Window {
     }
 
     async fn save_circuit(&self) -> Result<()> {
-        let circuit = self
-            .imp()
-            .circuit_view
-            .buffer()
-            .downcast::<Circuit>()
-            .unwrap();
+        let circuit = self.circuit();
 
         if circuit.file().is_some() {
             circuit.save().await?;
@@ -282,12 +277,7 @@ impl Window {
     }
 
     async fn save_circuit_as(&self) -> Result<()> {
-        let circuit = self
-            .imp()
-            .circuit_view
-            .buffer()
-            .downcast::<Circuit>()
-            .unwrap();
+        let circuit = self.circuit();
 
         let filter = gtk::FileFilter::new();
         filter.set_property("name", gettext("Plain Text Files"));
