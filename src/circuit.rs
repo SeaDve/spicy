@@ -48,7 +48,8 @@ mod imp {
 
             let obj = self.obj();
 
-            if let Some(language) = gtk_source::LanguageManager::default().language("spice") {
+            let language_manager = gtk_source::LanguageManager::default();
+            if let Some(language) = language_manager.language("spice") {
                 obj.set_language(Some(&language));
                 obj.set_highlight_syntax(true);
             }
