@@ -100,7 +100,7 @@ mod imp {
                     .to_string_lossy()
                     .to_string()
             } else {
-                parse_circuit_title(&*obj)
+                obj.parse_title()
             }
         }
 
@@ -165,28 +165,19 @@ impl Circuit {
 
         Ok(())
     }
-}
 
-fn copy_text_iter(text_iter: &gtk::TextIter) -> gtk::TextIter {
-    use glib::translate::{FromGlibPtrFull, ToGlibPtr};
+    fn parse_title(&self) -> String {
+        let end = self.end_iter();
+        let end_lookup = end
+            .backward_search(".end", gtk::TextSearchFlags::CASE_INSENSITIVE, None)
+            .map(|(start, _)| start)
+            .unwrap_or(end);
 
-    unsafe {
-        // FIXME upstream TextIter copy
-        gtk::TextIter::from_glib_full(gtk::ffi::gtk_text_iter_copy(text_iter.to_glib_none().0))
-    }
-}
-
-fn parse_circuit_title(buffer: &impl IsA<gtk_source::Buffer>) -> String {
-    let buffer = buffer.as_ref();
-
-    let end = buffer.end_iter();
-    let end_lookup = end
-        .backward_search(".end", gtk::TextSearchFlags::CASE_INSENSITIVE, None)
-        .map(|(start, _)| start)
-        .unwrap_or(end);
-
-    let ret =
-        match end_lookup.backward_search(".title", gtk::TextSearchFlags::CASE_INSENSITIVE, None) {
+        let ret = match end_lookup.backward_search(
+            ".title",
+            gtk::TextSearchFlags::CASE_INSENSITIVE,
+            None,
+        ) {
             Some((_, mut text_start)) => {
                 if !text_start.ends_word() {
                     text_start.forward_word_end();
@@ -202,7 +193,7 @@ fn parse_circuit_title(buffer: &impl IsA<gtk_source::Buffer>) -> String {
                 text_start.visible_text(&text_end)
             }
             _ => {
-                let mut text_end = buffer.start_iter();
+                let mut text_end = self.start_iter();
                 while text_end.char().is_whitespace() && text_end < end_lookup {
                     text_end.forward_char();
                 }
@@ -217,5 +208,15 @@ fn parse_circuit_title(buffer: &impl IsA<gtk_source::Buffer>) -> String {
             }
         };
 
-    ret.trim().to_lowercase().to_string()
+        ret.trim().to_lowercase().to_string()
+    }
+}
+
+// FIXME upstream TextIter copy
+fn copy_text_iter(text_iter: &gtk::TextIter) -> gtk::TextIter {
+    use glib::translate::{FromGlibPtrFull, ToGlibPtr};
+
+    unsafe {
+        gtk::TextIter::from_glib_full(gtk::ffi::gtk_text_iter_copy(text_iter.to_glib_none().0))
+    }
 }
