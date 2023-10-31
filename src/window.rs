@@ -394,7 +394,7 @@ impl Window {
                 .build();
             let file = dialog.save_future(Some(self)).await?;
 
-            circuit.save_draft_as(&file).await?;
+            circuit.save_draft_to(&file).await?;
         }
 
         Ok(())

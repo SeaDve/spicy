@@ -175,7 +175,7 @@ impl Circuit {
         Ok(())
     }
 
-    pub async fn save_draft_as(&self, file: &gio::File) -> Result<()> {
+    pub async fn save_draft_to(&self, file: &gio::File) -> Result<()> {
         ensure!(self.file().is_none(), "Circuit must be a draft");
 
         let imp = self.imp();
