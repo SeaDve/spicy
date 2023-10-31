@@ -28,18 +28,6 @@
             <property name="title" translatable="yes" context="shortcut window">File</property>
             <child>
               <object class="GtkShortcutsShortcut">
-                <property name="title" translatable="yes" context="shortcut window">New</property>
-                <property name="action-name">win.new-circuit</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkShortcutsShortcut">
-                <property name="title" translatable="yes" context="shortcut window">Open</property>
-                <property name="action-name">win.open-circuit</property>
-              </object>
-            </child>
-            <child>
-              <object class="GtkShortcutsShortcut">
                 <property name="title" translatable="yes" context="shortcut window">Save</property>
                 <property name="action-name">win.save-circuit</property>
               </object>
@@ -55,6 +43,18 @@
         <child>
           <object class="GtkShortcutsGroup">
             <property name="title" translatable="yes" context="shortcut window">Circuit</property>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="title" translatable="yes" context="shortcut window">New Circuit</property>
+                <property name="action-name">win.new-circuit</property>
+              </object>
+            </child>
+            <child>
+              <object class="GtkShortcutsShortcut">
+                <property name="title" translatable="yes" context="shortcut window">Open Circuit</property>
+                <property name="action-name">win.open-circuit</property>
+              </object>
+            </child>
             <child>
               <object class="GtkShortcutsShortcut">
                 <property name="title" translatable="yes" context="shortcut window">Run Simulator</property>

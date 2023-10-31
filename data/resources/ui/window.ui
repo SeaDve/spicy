@@ -3,13 +3,15 @@
   <menu id="primary_menu">
     <section>
       <item>
-        <attribute name="label" translatable="yes">_New</attribute>
+        <attribute name="label" translatable="yes">_New Circuit</attribute>
         <attribute name="action">win.new-circuit</attribute>
       </item>
       <item>
-        <attribute name="label" translatable="yes">_Open</attribute>
+        <attribute name="label" translatable="yes">_Open Circuit…</attribute>
         <attribute name="action">win.open-circuit</attribute>
       </item>
+    </section>
+    <section>
       <item>
         <attribute name="label" translatable="yes">_Save</attribute>
         <attribute name="action">win.save-circuit</attribute>
