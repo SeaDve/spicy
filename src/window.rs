@@ -339,11 +339,10 @@ impl Window {
 
         let circuit = self.circuit();
         let circuit_text = circuit.text(&circuit.start_iter(), &circuit.end_iter(), true);
-        let circuit = circuit_text.trim();
         imp.ngspice
             .get()
             .context("Ngspice was not initialized")?
-            .circuit(circuit.split('\n'))?;
+            .circuit(circuit_text.trim().split('\n'))?;
 
         Ok(())
     }
