@@ -317,11 +317,12 @@ impl Window {
         dialog.add_response(DISCARD_RESPONSE_ID, &gettext("Discard"));
         dialog.set_response_appearance(DISCARD_RESPONSE_ID, adw::ResponseAppearance::Destructive);
 
-        if circuit.file().is_some() {
-            dialog.add_response(SAVE_RESPONSE_ID, &gettext("Save"));
+        let save_response_text = if circuit.file().is_some() {
+            gettext("Save")
         } else {
-            dialog.add_response(SAVE_RESPONSE_ID, &gettext("Save As…"));
-        }
+            gettext("Save As…")
+        };
+        dialog.add_response(SAVE_RESPONSE_ID, &save_response_text);
         dialog.set_response_appearance(SAVE_RESPONSE_ID, adw::ResponseAppearance::Suggested);
 
         match dialog.choose_future().await.as_str() {
