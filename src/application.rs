@@ -75,9 +75,7 @@ impl Application {
     fn setup_gactions(&self) {
         let action_quit = gio::ActionEntry::builder("quit")
             .activate(move |app: &Self, _, _| {
-                // This is needed to trigger the delete event and saving the window state
                 app.window().close();
-                app.quit();
             })
             .build();
 
