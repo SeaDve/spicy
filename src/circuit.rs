@@ -206,8 +206,7 @@ impl Circuit {
         let end = self.end_iter();
         let end_lookup = end
             .backward_search(".end", gtk::TextSearchFlags::CASE_INSENSITIVE, None)
-            .map(|(start, _)| start)
-            .unwrap_or(end);
+            .map_or(end, |(end_text_start, _)| end_text_start);
 
         let ret = match end_lookup.backward_search(
             ".title",
@@ -280,11 +279,11 @@ impl Circuit {
         let style_scheme = if style_manager.is_dark() {
             style_scheme_manager
                 .scheme("Adwaita-dark")
-                .or(style_scheme_manager.scheme("classic-dark"))
+                .or_else(|| style_scheme_manager.scheme("classic-dark"))
         } else {
             style_scheme_manager
                 .scheme("Adwaita")
-                .or(style_scheme_manager.scheme("classic"))
+                .or_else(|| style_scheme_manager.scheme("classic"))
         };
 
         self.set_style_scheme(style_scheme.as_ref());

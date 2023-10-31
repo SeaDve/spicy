@@ -318,9 +318,9 @@ impl Window {
         dialog.set_response_appearance(DISCARD_RESPONSE_ID, adw::ResponseAppearance::Destructive);
 
         if circuit.file().is_some() {
-            dialog.add_response(SAVE_RESPONSE_ID, &gettext("Save"))
+            dialog.add_response(SAVE_RESPONSE_ID, &gettext("Save"));
         } else {
-            dialog.add_response(SAVE_RESPONSE_ID, &gettext("Save As…"))
+            dialog.add_response(SAVE_RESPONSE_ID, &gettext("Save As…"));
         }
         dialog.set_response_appearance(SAVE_RESPONSE_ID, adw::ResponseAppearance::Suggested);
 
