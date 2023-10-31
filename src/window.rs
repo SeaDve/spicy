@@ -342,7 +342,7 @@ impl Window {
         imp.ngspice
             .get()
             .context("Ngspice was not initialized")?
-            .circuit(circuit_text.trim().split('\n'))?;
+            .circuit(circuit_text.lines())?;
 
         Ok(())
     }
