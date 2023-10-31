@@ -1,18 +1,32 @@
-use adw::subclass::prelude::*;
+use std::{error, fmt};
+
+use adw::{prelude::*, subclass::prelude::*};
 use anyhow::{Context, Result};
 use gettextrs::gettext;
 use gtk::{
     gio,
     glib::{self, clone},
-    prelude::*,
 };
 
 use crate::{
     application::Application,
     circuit::Circuit,
     config::{APP_ID, PROFILE},
+    i18n::gettext_f,
     ngspice::NgSpice,
 };
+
+/// Indicates that a task was cancelled.
+#[derive(Debug)]
+struct Cancelled;
+
+impl fmt::Display for Cancelled {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str("Task cancelled")
+    }
+}
+
+impl error::Error for Cancelled {}
 
 mod imp {
     use glib::once_cell::unsync::OnceCell;
@@ -48,7 +62,7 @@ mod imp {
         fn class_init(klass: &mut Self::Class) {
             klass.bind_template();
 
-            klass.install_action_async("win.run-simulator", None, |obj, _, _| async move {
+            klass.install_action("win.run-simulator", None, |obj, _, _| {
                 if let Err(err) = obj.run_simulator() {
                     tracing::error!("Failed to run simulator: {:?}", err);
                     obj.add_message_toast(&gettext("Failed to run simulator"));
@@ -56,10 +70,18 @@ mod imp {
             });
 
             klass.install_action_async("win.new-circuit", None, |obj, _, _| async move {
+                if obj.handle_unsaved_changes(&obj.circuit()).await.is_err() {
+                    return;
+                }
+
                 obj.set_circuit(&Circuit::draft());
             });
 
             klass.install_action_async("win.open-circuit", None, |obj, _, _| async move {
+                if obj.handle_unsaved_changes(&obj.circuit()).await.is_err() {
+                    return;
+                }
+
                 if let Err(err) = obj.open_circuit().await {
                     if !err
                         .downcast_ref::<glib::Error>()
@@ -72,7 +94,7 @@ mod imp {
             });
 
             klass.install_action_async("win.save-circuit", None, |obj, _, _| async move {
-                if let Err(err) = obj.save_circuit().await {
+                if let Err(err) = obj.save_circuit(&obj.circuit()).await {
                     if !err
                         .downcast_ref::<glib::Error>()
                         .is_some_and(|error| error.matches(gtk::DialogError::Dismissed))
@@ -84,7 +106,7 @@ mod imp {
             });
 
             klass.install_action_async("win.save-circuit-as", None, |obj, _, _| async move {
-                if let Err(err) = obj.save_circuit_as().await {
+                if let Err(err) = obj.save_circuit_as(&obj.circuit()).await {
                     if !err
                         .downcast_ref::<glib::Error>()
                         .is_some_and(|error| error.matches(gtk::DialogError::Dismissed))
@@ -185,8 +207,22 @@ mod imp {
     impl WidgetImpl for Window {}
     impl WindowImpl for Window {
         fn close_request(&self) -> glib::Propagation {
-            if let Err(err) = self.obj().save_window_size() {
+            let obj = self.obj();
+
+            if let Err(err) = obj.save_window_size() {
                 tracing::warn!("Failed to save window state, {}", &err);
+            }
+
+            let curr_circuit = obj.circuit();
+            if curr_circuit.is_modified() {
+                let ctx = glib::MainContext::default();
+                ctx.spawn_local(clone!(@weak obj => async move {
+                    if obj.handle_unsaved_changes(&curr_circuit).await.is_err() {
+                        return;
+                    }
+                    obj.destroy();
+                }));
+                return glib::Propagation::Stop;
             }
 
             self.parent_close_request()
@@ -208,11 +244,6 @@ impl Window {
         glib::Object::builder().property("application", app).build()
     }
 
-    fn add_message_toast(&self, message: &str) {
-        let toast = adw::Toast::new(message);
-        self.imp().toast_overlay.add_toast(toast);
-    }
-
     fn set_circuit(&self, circuit: &Circuit) {
         let imp = self.imp();
 
@@ -222,6 +253,83 @@ impl Window {
 
     fn circuit(&self) -> Circuit {
         self.imp().circuit_view.buffer().downcast().unwrap()
+    }
+
+    fn add_message_toast(&self, message: &str) {
+        let toast = adw::Toast::new(message);
+        self.imp().toast_overlay.add_toast(toast);
+    }
+
+    /// Returns `Ok` if unsaved changes are handled and can proceed, `Err` if
+    /// the next operation should be aborted.
+    async fn handle_unsaved_changes(&self, circuit: &Circuit) -> Result<()> {
+        if !circuit.is_modified() {
+            return Ok(());
+        }
+
+        match self.present_save_changes_dialog(circuit).await {
+            Ok(_) => Ok(()),
+            Err(err) => {
+                if !err.is::<Cancelled>()
+                    && !err
+                        .downcast_ref::<glib::Error>()
+                        .is_some_and(|error| error.matches(gtk::DialogError::Dismissed))
+                {
+                    tracing::error!("Failed to save changes to circuit: {:?}", err);
+                    self.add_message_toast(&gettext("Failed to save changes to circuit"));
+                }
+                Err(err)
+            }
+        }
+    }
+
+    /// Returns `Ok` if unsaved changes are handled and can proceed, `Err` if
+    /// the next operation should be aborted.
+    async fn present_save_changes_dialog(&self, circuit: &Circuit) -> Result<()> {
+        const CANCEL_RESPONSE_ID: &str = "cancel";
+        const DISCARD_RESPONSE_ID: &str = "discard";
+        const SAVE_RESPONSE_ID: &str = "save";
+
+        let file_name = circuit
+            .file()
+            .and_then(|file| {
+                file.path()
+                    .unwrap()
+                    .file_name()
+                    .map(|file_name| file_name.to_string_lossy().to_string())
+            })
+            .unwrap_or_else(|| gettext("Untitled Circuit"));
+        let dialog = adw::MessageDialog::builder()
+            .modal(true)
+            .transient_for(self)
+            .heading(gettext("Save Changes?"))
+            .body(gettext_f(
+                // Translators: Do NOT translate the contents between '{' and '}', this is a variable name.
+                "“{file_name}” contains unsaved changes. Changes which are not saved will be permanently lost.",
+                &[("file_name", &file_name)],
+            ))
+            .close_response(CANCEL_RESPONSE_ID)
+            .default_response(SAVE_RESPONSE_ID)
+            .build();
+
+        dialog.add_response(CANCEL_RESPONSE_ID, &gettext("Cancel"));
+
+        dialog.add_response(DISCARD_RESPONSE_ID, &gettext("Discard"));
+        dialog.set_response_appearance(DISCARD_RESPONSE_ID, adw::ResponseAppearance::Destructive);
+
+        if circuit.file().is_some() {
+            dialog.add_response(SAVE_RESPONSE_ID, &gettext("Save"))
+        } else {
+            dialog.add_response(SAVE_RESPONSE_ID, &gettext("Save As…"))
+        }
+        dialog.set_response_appearance(SAVE_RESPONSE_ID, adw::ResponseAppearance::Suggested);
+
+        match dialog.choose_future().await.as_str() {
+            CANCEL_RESPONSE_ID => Err(Cancelled.into()),
+            DISCARD_RESPONSE_ID => Ok(()),
+            SAVE_RESPONSE_ID => self.save_circuit(circuit).await,
+            _ => unreachable!(),
+        }
     }
 
     fn run_simulator(&self) -> Result<()> {
@@ -267,9 +375,7 @@ impl Window {
         Ok(())
     }
 
-    async fn save_circuit(&self) -> Result<()> {
-        let circuit = self.circuit();
-
+    async fn save_circuit(&self, circuit: &Circuit) -> Result<()> {
         if circuit.file().is_some() {
             circuit.save().await?;
         } else {
@@ -294,9 +400,7 @@ impl Window {
         Ok(())
     }
 
-    async fn save_circuit_as(&self) -> Result<()> {
-        let circuit = self.circuit();
-
+    async fn save_circuit_as(&self, circuit: &Circuit) -> Result<()> {
         let filter = gtk::FileFilter::new();
         filter.set_property("name", gettext("Plain Text Files"));
         filter.add_mime_type("text/plain");

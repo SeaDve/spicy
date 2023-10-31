@@ -1,6 +1,7 @@
 mod application;
 mod circuit;
 mod config;
+mod i18n;
 mod ngspice;
 mod window;
 
