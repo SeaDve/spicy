@@ -217,7 +217,7 @@ mod imp {
                         format!("{}\n", glib::markup_escape_text(string.trim()))
                     };
                     output_buffer.insert_markup(&mut output_buffer.end_iter(), &text);
-                    obj.scroll_output_view_idle(gtk::ScrollType::End, false);
+                    obj.output_view_scroll_idle(gtk::ScrollType::End, false);
                 }),
                 clone!(@weak obj => move |_, _, _| {
                     obj.close();
@@ -304,12 +304,20 @@ impl Window {
         self.imp().toast_overlay.add_toast(toast);
     }
 
-    fn scroll_output_view_idle(&self, scroll_type: gtk::ScrollType, horizontal: bool) {
+    fn output_view_scroll_idle(&self, scroll_type: gtk::ScrollType, horizontal: bool) {
         glib::idle_add_local_once(clone!(@weak self as obj => move || {
             obj.imp()
                 .output_scrolled_window
                 .emit_scroll_child(scroll_type, horizontal);
         }));
+    }
+
+    fn output_view_append_command(&self, command: &str) {
+        let output_buffer = self.imp().output_view.buffer();
+        output_buffer.insert_markup(
+            &mut output_buffer.end_iter(),
+            &format!("<span style=\"italic\">$ {}</span>\n", command),
+        );
     }
 
     /// Returns `Ok` if unsaved changes are handled and can proceed, `Err` if
@@ -391,6 +399,8 @@ impl Window {
         let circuit = self.circuit();
         let circuit_text = circuit.text(&circuit.start_iter(), &circuit.end_iter(), true);
 
+        self.output_view_append_command(&gettext("circuit load"));
+
         let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
         ngspice.circuit(circuit_text.lines())?;
 
@@ -409,11 +419,7 @@ impl Window {
             return Ok(());
         }
 
-        let output_buffer = imp.output_view.buffer();
-        output_buffer.insert_markup(
-            &mut output_buffer.end_iter(),
-            &format!("<span style=\"italic\">$ {}</span>\n", command),
-        );
+        self.output_view_append_command(&command);
 
         let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
         ngspice.command(&command)?;
