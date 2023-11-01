@@ -140,6 +140,7 @@
                       <object class="GtkEntry" id="command_entry">
                         <property name="hexpand">True</property>
                         <property name="placeholder-text">Enter Command</property>
+                        <property name="input-hints">no-emoji</property>
                         <style>
                           <class name="circular"/>
                         </style>
