@@ -668,7 +668,7 @@ fn current_plot_to_texture(
 
     cc.configure_mesh()
         .x_desc("Time (ms)")
-        .x_label_formatter(&|v| format!("{:.1}", v * 1e3))
+        .x_label_formatter(&|v| format!("{:.0}", v * 1e3))
         .y_label_formatter(&|v| format!("{:.1}", v))
         .draw()?;
 
