@@ -43,4 +43,9 @@ impl NgSpice {
             .circuit(circuit.into_iter().map(|s| s.into()).collect::<Vec<_>>())?;
         Ok(())
     }
+
+    pub fn command(&self, command: &str) -> Result<()> {
+        self.inner.command(command)?;
+        Ok(())
+    }
 }

@@ -33,11 +33,13 @@
     </section>
   </menu>
   <template class="SpicyWindow" parent="AdwApplicationWindow">
+    <property name="default-widget">command_run_button</property>
     <child>
       <object class="AdwToastOverlay" id="toast_overlay">
         <child>
           <object class="AdwToolbarView">
             <property name="top-bar-style">raised</property>
+            <property name="bottom-bar-style">raised</property>
             <child type="top">
               <object class="AdwHeaderBar">
                 <property name="title-widget">
@@ -126,6 +128,39 @@
                 </child>
               </object>
             </property>
+            <child type="bottom">
+              <object class="AdwClamp">
+                <property name="margin-start">6</property>
+                <property name="margin-end">6</property>
+                <property name="margin-top">6</property>
+                <property name="margin-bottom">6</property>
+                <child>
+                  <object class="GtkBox">
+                    <property name="spacing">6</property>
+                    <child>
+                      <object class="GtkEntry" id="command_entry">
+                        <property name="hexpand">True</property>
+                        <property name="activates-default">True</property>
+                        <property name="placeholder-text">Enter Command</property>
+                        <style>
+                          <class name="circular"/>
+                        </style>
+                      </object>
+                    </child>
+                    <child>
+                      <object class="GtkButton" id="command_run_button">
+                        <property name="icon-name">go-up-symbolic</property>
+                        <property name="action-name">win.run-command</property>
+                        <style>
+                          <class name="circular"/>
+                          <class name="suggested-action"/>
+                        </style>
+                      </object>
+                    </child>
+                  </object>
+                </child>
+              </object>
+            </child>
           </object>
         </child>
       </object>

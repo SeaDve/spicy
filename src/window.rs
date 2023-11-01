@@ -47,6 +47,8 @@ mod imp {
         #[template_child]
         pub(super) circuit_view: TemplateChild<gtk_source::View>,
         #[template_child]
+        pub(super) command_entry: TemplateChild<gtk::Entry>,
+        #[template_child]
         pub(super) output_view: TemplateChild<gtk::TextView>,
 
         pub(super) ngspice: OnceCell<NgSpice>,
@@ -66,6 +68,13 @@ mod imp {
                 if let Err(err) = obj.run_simulator() {
                     tracing::error!("Failed to run simulator: {:?}", err);
                     obj.add_message_toast(&gettext("Failed to run simulator"));
+                }
+            });
+
+            klass.install_action("win.run-command", None, |obj, _, _| {
+                if let Err(err) = obj.run_command() {
+                    tracing::error!("Failed to run command: {:?}", err);
+                    obj.add_message_toast(&gettext("Failed to run command"));
                 }
             });
 
@@ -164,6 +173,11 @@ mod imp {
                 .sync_create()
                 .build();
 
+            self.command_entry
+                .connect_changed(clone!(@weak obj => move |_| {
+                    obj.update_run_command_action_state();
+                }));
+
             let ngspice_ret = NgSpice::new(clone!(@weak obj => move |string| {
                 let output_buffer = obj.imp().output_view.buffer();
                 let text = if string.starts_with("stdout") {
@@ -197,6 +211,7 @@ mod imp {
             obj.load_window_size();
 
             obj.set_circuit(&Circuit::draft());
+            obj.update_run_command_action_state();
         }
 
         fn dispose(&self) {
@@ -340,10 +355,27 @@ impl Window {
 
         let circuit = self.circuit();
         let circuit_text = circuit.text(&circuit.start_iter(), &circuit.end_iter(), true);
-        imp.ngspice
-            .get()
-            .context("Ngspice was not initialized")?
-            .circuit(circuit_text.lines())?;
+
+        let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
+        ngspice.circuit(circuit_text.lines())?;
+
+        Ok(())
+    }
+
+    fn run_command(&self) -> Result<()> {
+        let imp = self.imp();
+
+        let command = imp.command_entry.text();
+        imp.command_entry.set_text("");
+
+        let output_buffer = imp.output_view.buffer();
+        output_buffer.insert_markup(
+            &mut output_buffer.end_iter(),
+            &format!("<span style=\"italic\">$ {}</span>\n", command),
+        );
+
+        let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
+        ngspice.command(&command)?;
 
         Ok(())
     }
@@ -444,5 +476,10 @@ impl Window {
         if is_maximized {
             self.maximize();
         }
+    }
+
+    fn update_run_command_action_state(&self) {
+        let is_command_empty = self.imp().command_entry.text().is_empty();
+        self.action_set_enabled("win.run-command", !is_command_empty);
     }
 }
