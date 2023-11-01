@@ -99,7 +99,7 @@
                       <object class="GtkSeparator"/>
                     </child>
                     <child>
-                      <object class="GtkScrolledWindow">
+                      <object class="GtkScrolledWindow" id="output_scrolled_window">
                         <property name="hexpand">True</property>
                         <child>
                           <object class="GtkTextView" id="output_view">

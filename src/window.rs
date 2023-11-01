@@ -47,9 +47,11 @@ mod imp {
         #[template_child]
         pub(super) circuit_view: TemplateChild<gtk_source::View>,
         #[template_child]
-        pub(super) command_entry: TemplateChild<gtk::Entry>,
+        pub(super) output_scrolled_window: TemplateChild<gtk::ScrolledWindow>,
         #[template_child]
         pub(super) output_view: TemplateChild<gtk::TextView>,
+        #[template_child]
+        pub(super) command_entry: TemplateChild<gtk::Entry>,
 
         pub(super) circuit_binding_group: glib::BindingGroup,
         pub(super) circuit_signal_group: OnceCell<glib::SignalGroup>,
@@ -215,6 +217,7 @@ mod imp {
                         format!("{}\n", glib::markup_escape_text(string.trim()))
                     };
                     output_buffer.insert_markup(&mut output_buffer.end_iter(), &text);
+                    obj.scroll_output_view_idle(gtk::ScrollType::End, false);
                 }),
                 clone!(@weak obj => move |_, _, _| {
                     obj.close();
@@ -301,6 +304,14 @@ impl Window {
         self.imp().toast_overlay.add_toast(toast);
     }
 
+    fn scroll_output_view_idle(&self, scroll_type: gtk::ScrollType, horizontal: bool) {
+        glib::idle_add_local_once(clone!(@weak self as obj => move || {
+            obj.imp()
+                .output_scrolled_window
+                .emit_scroll_child(scroll_type, horizontal);
+        }));
+    }
+
     /// Returns `Ok` if unsaved changes are handled and can proceed, `Err` if
     /// the next operation should be aborted.
     async fn handle_unsaved_changes(&self, circuit: &Circuit) -> Result<()> {
@@ -376,8 +387,6 @@ impl Window {
 
     fn run_simulator(&self) -> Result<()> {
         let imp = self.imp();
-
-        imp.output_view.buffer().set_text("");
 
         let circuit = self.circuit();
         let circuit_text = circuit.text(&circuit.start_iter(), &circuit.end_iter(), true);
