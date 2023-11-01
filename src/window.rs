@@ -51,8 +51,10 @@ mod imp {
         #[template_child]
         pub(super) output_view: TemplateChild<gtk::TextView>,
 
-        pub(super) ngspice: OnceCell<NgSpice>,
         pub(super) circuit_binding_group: glib::BindingGroup,
+        pub(super) circuit_signal_group: OnceCell<glib::SignalGroup>,
+
+        pub(super) ngspice: OnceCell<NgSpice>,
     }
 
     #[glib::object_subclass]
@@ -173,9 +175,18 @@ mod imp {
                 .sync_create()
                 .build();
 
+            let circuit_signal_group = glib::SignalGroup::new::<Circuit>();
+            circuit_signal_group.connect_notify_local(
+                Some("busy-progress"),
+                clone!(@weak obj => move |_, _| {
+                    obj.update_save_actions();
+                }),
+            );
+            self.circuit_signal_group.set(circuit_signal_group).unwrap();
+
             self.command_entry
                 .connect_changed(clone!(@weak obj => move |_| {
-                    obj.update_run_command_action_state();
+                    obj.update_run_command_action();
                 }));
             self.command_entry
                 .connect_activate(clone!(@weak obj => move |_| {
@@ -215,7 +226,8 @@ mod imp {
             obj.load_window_size();
 
             obj.set_circuit(&Circuit::draft());
-            obj.update_run_command_action_state();
+            obj.update_run_command_action();
+            obj.update_save_actions();
         }
 
         fn dispose(&self) {
@@ -267,7 +279,11 @@ impl Window {
         let imp = self.imp();
 
         imp.circuit_view.set_buffer(Some(circuit));
+
         imp.circuit_binding_group.set_source(Some(circuit));
+
+        let circuit_signal_group = imp.circuit_signal_group.get().unwrap();
+        circuit_signal_group.set_target(Some(circuit));
     }
 
     fn circuit(&self) -> Circuit {
@@ -482,8 +498,14 @@ impl Window {
         }
     }
 
-    fn update_run_command_action_state(&self) {
+    fn update_run_command_action(&self) {
         let is_command_empty = self.imp().command_entry.text().is_empty();
         self.action_set_enabled("win.run-command", !is_command_empty);
+    }
+
+    fn update_save_actions(&self) {
+        let is_circuit_busy = self.circuit().is_busy();
+        self.action_set_enabled("win.save-circuit", !is_circuit_busy);
+        self.action_set_enabled("win.save-circuit-as", !is_circuit_busy);
     }
 }

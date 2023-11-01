@@ -26,7 +26,7 @@ mod imp {
         pub(super) title: PhantomData<String>,
         #[property(get = Self::is_modified)]
         pub(super) is_modified: PhantomData<bool>,
-        #[property(get)]
+        #[property(get, default_value = 1.0, minimum = 0.0, maximum = 1.0)]
         pub(super) busy_progress: Cell<f64>,
 
         pub(super) source_file: gtk_source::File,
@@ -133,7 +133,10 @@ mod imp {
         }
 
         fn is_modified(&self) -> bool {
-            gtk::TextBuffer::is_modified(self.obj().upcast_ref())
+            let obj = self.obj();
+
+            // This must not be busy (loading/saving) to be considered modified.
+            gtk::TextBuffer::is_modified(obj.upcast_ref()) && !obj.is_busy()
         }
     }
 }
@@ -150,6 +153,10 @@ impl Circuit {
 
     pub fn for_file(file: &gio::File) -> Self {
         glib::Object::builder().property("file", file).build()
+    }
+
+    pub fn is_busy(&self) -> bool {
+        self.imp().busy_progress.get() != 1.0
     }
 
     pub async fn load(&self) -> Result<()> {
@@ -266,6 +273,7 @@ impl Circuit {
                 };
                 self.imp().busy_progress.set(progress);
                 self.notify_busy_progress();
+                self.notify_is_modified();
             }
         };
 
