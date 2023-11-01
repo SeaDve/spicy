@@ -674,21 +674,17 @@ fn current_plot_to_texture(
 
     let colors = [RED, GREEN, BLUE, CYAN, MAGENTA, YELLOW];
     for ((name, vec), color) in other_vecs.iter().zip(colors.into_iter().cycle()) {
+        let style = ShapeStyle {
+            color: color.into(),
+            filled: true,
+            stroke_width: 1,
+        };
         cc.draw_series(LineSeries::new(
             time_vec.iter().copied().zip(vec.iter().copied()),
-            color,
+            style,
         ))?
         .label(name)
-        .legend(move |(x, y)| {
-            PathElement::new(
-                [(x, y), (x + 20, y)],
-                ShapeStyle {
-                    color: color.into(),
-                    filled: true,
-                    stroke_width: 2,
-                },
-            )
-        });
+        .legend(move |(x, y)| PathElement::new([(x, y), (x + 20, y)], style));
     }
 
     cc.configure_series_labels()
