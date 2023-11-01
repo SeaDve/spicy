@@ -59,6 +59,9 @@ mod imp {
                 obj.set_highlight_syntax(true);
             }
 
+            // FIXME Disable when https://gitlab.gnome.org/World/Rust/sourceview5-rs/-/issues/11 is fixed
+            obj.set_highlight_matching_brackets(false);
+
             let style_manager = adw::StyleManager::default();
             style_manager.connect_dark_notify(clone!(@weak obj => move |_| {
                 obj.update_style_scheme();
