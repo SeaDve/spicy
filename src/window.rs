@@ -661,12 +661,12 @@ fn current_plot_to_texture(
 
     let mut cc = ChartBuilder::on(&root_area)
         .margin(5)
-        .set_all_label_area_size(50)
+        .x_label_area_size(40)
+        .y_label_area_size(50)
         .caption(plot_name, ("sans-serif", 20))
         .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
 
     cc.configure_mesh()
-        .disable_mesh()
         .x_desc("Time (ms)")
         .x_label_formatter(&|v| format!("{:.1}", v * 1e3))
         .y_label_formatter(&|v| format!("{:.1}", v))
