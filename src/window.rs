@@ -227,7 +227,6 @@ mod imp {
 
             obj.set_circuit(&Circuit::draft());
             obj.update_run_command_action();
-            obj.update_save_actions();
         }
 
         fn dispose(&self) {
@@ -284,6 +283,8 @@ impl Window {
 
         let circuit_signal_group = imp.circuit_signal_group.get().unwrap();
         circuit_signal_group.set_target(Some(circuit));
+
+        self.update_save_actions();
     }
 
     fn circuit(&self) -> Circuit {
