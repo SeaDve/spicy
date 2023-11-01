@@ -155,7 +155,7 @@ mod imp {
                 .transform_to(|_, value| {
                     let title = value.get::<String>().unwrap();
                     let label = if title.is_empty() {
-                        gettext("New Circuit")
+                        gettext("Untitled Circuit")
                     } else {
                         title
                     };
