@@ -389,6 +389,15 @@ impl Window {
         let command = imp.command_entry.text();
         imp.command_entry.set_text("");
 
+        if command
+            .split_whitespace()
+            .next()
+            .map_or(false, |command| matches!(command.trim(), "quit" | "exit"))
+        {
+            self.close();
+            return Ok(());
+        }
+
         let output_buffer = imp.output_view.buffer();
         output_buffer.insert_markup(
             &mut output_buffer.end_iter(),
