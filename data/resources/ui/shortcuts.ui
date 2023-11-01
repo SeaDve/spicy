@@ -57,8 +57,8 @@
             </child>
             <child>
               <object class="GtkShortcutsShortcut">
-                <property name="title" translatable="yes" context="shortcut window">Run Simulator</property>
-                <property name="action-name">win.run-simulator</property>
+                <property name="title" translatable="yes" context="shortcut window">Load Circuit</property>
+                <property name="action-name">win.load-circuit</property>
               </object>
             </child>
           </object>

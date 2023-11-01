@@ -68,10 +68,10 @@ mod imp {
         fn class_init(klass: &mut Self::Class) {
             klass.bind_template();
 
-            klass.install_action("win.run-simulator", None, |obj, _, _| {
-                if let Err(err) = obj.run_simulator() {
-                    tracing::error!("Failed to run simulator: {:?}", err);
-                    obj.add_message_toast(&gettext("Failed to run simulator"));
+            klass.install_action("win.load-circuit", None, |obj, _, _| {
+                if let Err(err) = obj.load_circuit() {
+                    tracing::error!("Failed to load circuit: {:?}", err);
+                    obj.add_message_toast(&gettext("Failed to load circuit"));
                 }
             });
 
@@ -393,7 +393,7 @@ impl Window {
         }
     }
 
-    fn run_simulator(&self) -> Result<()> {
+    fn load_circuit(&self) -> Result<()> {
         let imp = self.imp();
 
         let circuit = self.circuit();
