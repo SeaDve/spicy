@@ -399,7 +399,7 @@ impl Window {
         let circuit = self.circuit();
         let circuit_text = circuit.text(&circuit.start_iter(), &circuit.end_iter(), true);
 
-        self.output_view_append_command(&gettext("circuit load"));
+        self.output_view_append_command("loadcirc");
 
         let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
         ngspice.circuit(circuit_text.lines())?;
@@ -413,16 +413,24 @@ impl Window {
         let command = imp.command_entry.text();
         imp.command_entry.set_text("");
 
-        // Custom clear command
-        if command.trim() == "clear" {
-            imp.output_view.buffer().set_text("");
-            return Ok(());
-        }
-
         self.output_view_append_command(&command);
 
-        let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
-        ngspice.command(&command)?;
+        match command.trim() {
+            "loadcirc" => {
+                let circuit = self.circuit();
+                let circuit_text = circuit.text(&circuit.start_iter(), &circuit.end_iter(), true);
+
+                let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
+                ngspice.circuit(circuit_text.lines())?;
+            }
+            "clear" => {
+                imp.output_view.buffer().set_text("");
+            }
+            _ => {
+                let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
+                ngspice.command(&command)?;
+            }
+        }
 
         Ok(())
     }
