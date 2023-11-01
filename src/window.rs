@@ -399,7 +399,7 @@ impl Window {
         let circuit = self.circuit();
         let circuit_text = circuit.text(&circuit.start_iter(), &circuit.end_iter(), true);
 
-        self.output_view_append_command("loadcirc");
+        self.output_view_append_command("source");
 
         let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
         ngspice.circuit(circuit_text.lines())?;
@@ -415,15 +415,15 @@ impl Window {
 
         self.output_view_append_command(&command);
 
-        match command.trim() {
-            "loadcirc" => {
+        match command.split_whitespace().collect::<Vec<_>>().as_slice() {
+            ["source"] => {
                 let circuit = self.circuit();
                 let circuit_text = circuit.text(&circuit.start_iter(), &circuit.end_iter(), true);
 
                 let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
                 ngspice.circuit(circuit_text.lines())?;
             }
-            "clear" => {
+            ["clear", ..] => {
                 imp.output_view.buffer().set_text("");
             }
             _ => {
