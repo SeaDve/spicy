@@ -2,12 +2,12 @@ use std::{fmt, sync::Arc};
 
 use anyhow::Result;
 
-pub struct Callback {
+pub struct Callbacks {
     send_char: Box<dyn Fn(&str)>,
     controlled_exit: Box<dyn Fn(i32, bool, bool)>,
 }
 
-impl Callback {
+impl Callbacks {
     pub fn new(
         send_char: impl Fn(&str) + 'static,
         controlled_exit: impl Fn(i32, bool, bool) + 'static,
@@ -19,7 +19,7 @@ impl Callback {
     }
 }
 
-impl elektron_ngspice::Callbacks for Callback {
+impl elektron_ngspice::Callbacks for Callbacks {
     fn send_char(&mut self, s: &str) {
         (self.send_char)(s);
     }
@@ -30,7 +30,7 @@ impl elektron_ngspice::Callbacks for Callback {
 }
 
 pub struct NgSpice {
-    inner: Arc<elektron_ngspice::NgSpice<'static, Callback>>,
+    inner: Arc<elektron_ngspice::NgSpice<'static, Callbacks>>,
 }
 
 impl fmt::Debug for NgSpice {
@@ -40,18 +40,18 @@ impl fmt::Debug for NgSpice {
 }
 
 impl NgSpice {
-    pub fn new(callback: Callback) -> Result<Self> {
-        static mut CALLBACK_INSTANCE: Option<Callback> = None;
+    pub fn new(callbacks: Callbacks) -> Result<Self> {
+        static mut CALLBACKS_INSTANCE: Option<Callbacks> = None;
 
         let inner = unsafe {
             assert!(
-                CALLBACK_INSTANCE.is_none(),
+                CALLBACKS_INSTANCE.is_none(),
                 "Multiple Ngspice instance is not supported"
             );
 
-            CALLBACK_INSTANCE.replace(callback);
+            CALLBACKS_INSTANCE.replace(callbacks);
 
-            elektron_ngspice::NgSpice::new(CALLBACK_INSTANCE.as_mut().unwrap())?
+            elektron_ngspice::NgSpice::new(CALLBACKS_INSTANCE.as_mut().unwrap())?
         };
 
         Ok(Self { inner })

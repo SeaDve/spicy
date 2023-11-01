@@ -13,7 +13,7 @@ use crate::{
     circuit::Circuit,
     config::{APP_ID, PROFILE},
     i18n::gettext_f,
-    ngspice::{Callback, NgSpice},
+    ngspice::{Callbacks, NgSpice},
 };
 
 /// Indicates that a task was cancelled.
@@ -193,7 +193,7 @@ mod imp {
                     WidgetExt::activate_action(&obj, "win.run-command", None).unwrap();
                 }));
 
-            let ngspice_cb = Callback::new(
+            let ngspice_cb = Callbacks::new(
                 clone!(@weak obj => move |string| {
                     let output_buffer = obj.imp().output_view.buffer();
                     let text = if string.starts_with("stdout") {
