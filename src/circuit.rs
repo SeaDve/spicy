@@ -222,7 +222,7 @@ impl Circuit {
                     text_start.backward_word_start();
                 }
 
-                let mut text_end = copy_text_iter(&text_start);
+                let mut text_end = text_start;
                 text_end.forward_to_line_end();
 
                 text_start.visible_text(&text_end)
@@ -236,7 +236,7 @@ impl Circuit {
                     text_end.forward_to_line_end();
                 }
 
-                let mut text_start = copy_text_iter(&text_end);
+                let mut text_start = text_end;
                 text_start.backward_line();
 
                 text_start.visible_text(&text_end)
@@ -288,11 +288,4 @@ impl Circuit {
 
         self.set_style_scheme(style_scheme.as_ref());
     }
-}
-
-// FIXME upstream TextIter copy
-fn copy_text_iter(text_iter: &gtk::TextIter) -> gtk::TextIter {
-    use glib::translate::{from_glib_full, ToGlibPtr};
-
-    unsafe { from_glib_full(gtk::ffi::gtk_text_iter_copy(text_iter.to_glib_none().0)) }
 }
