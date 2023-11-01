@@ -1,12 +1,17 @@
-use std::{error, fmt};
+use std::{
+    error,
+    fmt::{self, Write},
+};
 
 use adw::{prelude::*, subclass::prelude::*};
-use anyhow::{Context, Result};
+use anyhow::{bail, Context, Result};
+use elektron_ngspice::ComplexSlice;
 use gettextrs::gettext;
 use gtk::{
-    gio,
+    gdk, gio,
     glib::{self, clone},
 };
+use plotters_cairo::CairoBackend;
 
 use crate::{
     application::Application,
@@ -217,7 +222,6 @@ mod imp {
                         format!("{}\n", glib::markup_escape_text(string.trim()))
                     };
                     output_buffer.insert_markup(&mut output_buffer.end_iter(), &text);
-                    obj.output_view_scroll_idle(gtk::ScrollType::End, false);
                 }),
                 clone!(@weak obj => move |_, _, _| {
                     obj.close();
@@ -320,6 +324,69 @@ impl Window {
         );
     }
 
+    fn output_view_show_plot(&self, plot_name: &str) -> Result<()> {
+        let imp = self.imp();
+
+        let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
+        let vec_names = ngspice.all_vecs(plot_name)?;
+
+        let output_buffer = imp.output_view.buffer();
+        let mut end_iter = output_buffer.end_iter();
+
+        if vec_names.iter().any(|name| name == "time") {
+            let mut time_vec = Vec::new();
+            let mut other_vecs = Vec::new();
+            for vec_name in vec_names {
+                let vec_info = ngspice.vector_info(&vec_name)?;
+                let real = match &vec_info.data {
+                    ComplexSlice::Real(real) => real,
+                    ComplexSlice::Complex(_) => bail!("Data contains complex"),
+                };
+                if vec_name == "time" {
+                    time_vec.extend_from_slice(real);
+                } else {
+                    other_vecs.push((vec_name, real.to_vec()));
+                }
+            }
+
+            let paintable = current_plot_to_texture(
+                plot_name,
+                &time_vec,
+                &other_vecs,
+                imp.output_scrolled_window.width(),
+                imp.output_scrolled_window.height(),
+            )?;
+
+            end_iter.forward_line();
+            output_buffer.insert_paintable(&mut end_iter, &paintable);
+
+            end_iter.forward_to_line_end();
+            output_buffer.insert(&mut end_iter, "\n");
+        } else {
+            let mut text = String::new();
+            for vec_name in vec_names {
+                let vec_info = ngspice.vector_info(&vec_name)?;
+                match vec_info.data {
+                    ComplexSlice::Real(real) => {
+                        writeln!(text, "{}: {}", vec_name, real[0]).unwrap();
+                    }
+                    ComplexSlice::Complex(complex) => {
+                        writeln!(
+                            text,
+                            "{}: {} + {}i",
+                            vec_name, complex[0].cx_real, complex[0].cx_imag
+                        )
+                        .unwrap();
+                    }
+                }
+            }
+
+            output_buffer.insert(&mut end_iter, &text);
+        }
+
+        Ok(())
+    }
+
     /// Returns `Ok` if unsaved changes are handled and can proceed, `Err` if
     /// the next operation should be aborted.
     async fn handle_unsaved_changes(&self, circuit: &Circuit) -> Result<()> {
@@ -404,6 +471,8 @@ impl Window {
         let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
         ngspice.circuit(circuit_text.lines())?;
 
+        self.output_view_scroll_idle(gtk::ScrollType::End, false);
+
         Ok(())
     }
 
@@ -423,6 +492,14 @@ impl Window {
                 let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
                 ngspice.circuit(circuit_text.lines())?;
             }
+            ["showplot"] => {
+                let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
+                let current_plot_name = ngspice.current_plot()?;
+                self.output_view_show_plot(&current_plot_name)?;
+            }
+            ["showplot", plot_name] => {
+                self.output_view_show_plot(plot_name)?;
+            }
             ["clear", ..] => {
                 imp.output_view.buffer().set_text("");
             }
@@ -431,6 +508,8 @@ impl Window {
                 ngspice.command(&command)?;
             }
         }
+
+        self.output_view_scroll_idle(gtk::ScrollType::End, false);
 
         Ok(())
     }
@@ -543,4 +622,84 @@ impl Window {
         self.action_set_enabled("win.save-circuit", !is_circuit_busy);
         self.action_set_enabled("win.save-circuit-as", !is_circuit_busy);
     }
+}
+
+fn current_plot_to_texture(
+    plot_name: &str,
+    time_vec: &[f64],
+    other_vecs: &[(String, Vec<f64>)],
+    width: i32,
+    height: i32,
+) -> Result<gdk::Texture> {
+    use plotters::prelude::*;
+
+    // TODO Write paintable backend supporting Adwaita dark theme and colors
+    let surface = cairo::ImageSurface::create(cairo::Format::ARgb32, width, height)?;
+    let context = cairo::Context::new(&surface)?;
+    let root_area = CairoBackend::new(&context, (width as u32, height as u32))?.into_drawing_area();
+    root_area.fill(&WHITE)?;
+
+    let x_min = *time_vec
+        .iter()
+        .min_by(|a, b| a.total_cmp(b))
+        .context("Empty time data")?;
+    let x_max = *time_vec
+        .iter()
+        .max_by(|a, b| a.total_cmp(b))
+        .context("Empty time data")?;
+
+    let y_min = *other_vecs
+        .iter()
+        .flat_map(|(_, vec)| vec.iter())
+        .min_by(|a, b| a.total_cmp(b))
+        .context("Empty other data")?;
+    let y_max = *other_vecs
+        .iter()
+        .flat_map(|(_, vec)| vec.iter())
+        .max_by(|a, b| a.total_cmp(b))
+        .context("Empty other data")?;
+
+    let mut cc = ChartBuilder::on(&root_area)
+        .margin(5)
+        .set_all_label_area_size(50)
+        .caption(plot_name, ("sans-serif", 20))
+        .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
+
+    cc.configure_mesh()
+        .disable_mesh()
+        .x_desc("Time (ms)")
+        .x_label_formatter(&|v| format!("{:.1}", v * 1e3))
+        .y_label_formatter(&|v| format!("{:.1}", v))
+        .draw()?;
+
+    let colors = [RED, GREEN, BLUE, CYAN, MAGENTA, YELLOW];
+    for ((name, vec), color) in other_vecs.iter().zip(colors.into_iter().cycle()) {
+        cc.draw_series(LineSeries::new(
+            time_vec.iter().copied().zip(vec.iter().copied()),
+            color,
+        ))?
+        .label(name)
+        .legend(move |(x, y)| {
+            PathElement::new(
+                [(x, y), (x + 20, y)],
+                ShapeStyle {
+                    color: color.into(),
+                    filled: true,
+                    stroke_width: 2,
+                },
+            )
+        });
+    }
+
+    cc.configure_series_labels()
+        .position(SeriesLabelPosition::UpperRight)
+        .background_style(WHITE.mix(0.8))
+        .border_style(BLACK)
+        .draw()?;
+
+    let mut png_bytes = Vec::new();
+    surface.write_to_png(&mut png_bytes)?;
+    let texture = gdk::Texture::from_bytes(&glib::Bytes::from_owned(png_bytes))?;
+
+    Ok(texture)
 }

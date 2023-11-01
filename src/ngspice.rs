@@ -1,6 +1,7 @@
 use std::{fmt, sync::Arc};
 
 use anyhow::Result;
+use elektron_ngspice::VectorInfo;
 use futures_channel::mpsc;
 use futures_util::StreamExt;
 use gtk::glib;
@@ -84,6 +85,18 @@ impl NgSpice {
         self.inner
             .circuit(circuit.into_iter().map(|s| s.into()).collect::<Vec<_>>())?;
         Ok(())
+    }
+
+    pub fn current_plot(&self) -> Result<String> {
+        Ok(self.inner.current_plot()?)
+    }
+
+    pub fn all_vecs(&self, plot_name: &str) -> Result<Vec<String>> {
+        Ok(self.inner.all_vecs(plot_name)?)
+    }
+
+    pub fn vector_info(&self, vec_name: &str) -> Result<VectorInfo<'_>> {
+        Ok(self.inner.vector_info(vec_name)?)
     }
 
     pub fn command(&self, command: &str) -> Result<()> {
