@@ -389,12 +389,19 @@ impl Window {
         let command = imp.command_entry.text();
         imp.command_entry.set_text("");
 
+        // Override quit and exit commands
         if command
             .split_whitespace()
             .next()
             .map_or(false, |command| matches!(command.trim(), "quit" | "exit"))
         {
             self.close();
+            return Ok(());
+        }
+
+        // Custom clear command
+        if command.trim() == "clear" {
+            imp.output_view.buffer().set_text("");
             return Ok(());
         }
 
