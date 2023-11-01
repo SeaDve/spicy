@@ -177,6 +177,10 @@ mod imp {
                 .connect_changed(clone!(@weak obj => move |_| {
                     obj.update_run_command_action_state();
                 }));
+            self.command_entry
+                .connect_activate(clone!(@weak obj => move |_| {
+                    WidgetExt::activate_action(&obj, "win.run-command", None).unwrap();
+                }));
 
             let ngspice_ret = NgSpice::new(clone!(@weak obj => move |string| {
                 let output_buffer = obj.imp().output_view.buffer();

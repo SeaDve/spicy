@@ -33,7 +33,6 @@
     </section>
   </menu>
   <template class="SpicyWindow" parent="AdwApplicationWindow">
-    <property name="default-widget">command_run_button</property>
     <child>
       <object class="AdwToastOverlay" id="toast_overlay">
         <child>
@@ -140,7 +139,6 @@
                     <child>
                       <object class="GtkEntry" id="command_entry">
                         <property name="hexpand">True</property>
-                        <property name="activates-default">True</property>
                         <property name="placeholder-text">Enter Command</property>
                         <style>
                           <class name="circular"/>
@@ -148,7 +146,7 @@
                       </object>
                     </child>
                     <child>
-                      <object class="GtkButton" id="command_run_button">
+                      <object class="GtkButton">
                         <property name="icon-name">go-up-symbolic</property>
                         <property name="action-name">win.run-command</property>
                         <property name="tooltip-text">Run Command</property>
