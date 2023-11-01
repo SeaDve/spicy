@@ -13,7 +13,7 @@ use crate::{
     circuit::Circuit,
     config::{APP_ID, PROFILE},
     i18n::gettext_f,
-    ngspice::NgSpice,
+    ngspice::{Callback, NgSpice},
 };
 
 /// Indicates that a task was cancelled.
@@ -193,29 +193,34 @@ mod imp {
                     WidgetExt::activate_action(&obj, "win.run-command", None).unwrap();
                 }));
 
-            let ngspice_ret = NgSpice::new(clone!(@weak obj => move |string| {
-                let output_buffer = obj.imp().output_view.buffer();
-                let text = if string.starts_with("stdout") {
-                    let string = string.trim_start_matches("stdout").trim();
-                    if string.starts_with('*') {
+            let ngspice_cb = Callback::new(
+                clone!(@weak obj => move |string| {
+                    let output_buffer = obj.imp().output_view.buffer();
+                    let text = if string.starts_with("stdout") {
+                        let string = string.trim_start_matches("stdout").trim();
+                        if string.starts_with('*') {
+                            format!(
+                                "<span color=\"green\">{}</span>\n",
+                                glib::markup_escape_text(string)
+                            )
+                        } else {
+                            format!("{}\n", glib::markup_escape_text(string))
+                        }
+                    } else if string.starts_with("stderr") {
                         format!(
-                            "<span color=\"green\">{}</span>\n",
-                            glib::markup_escape_text(string)
+                            "<span color=\"red\">{}</span>\n",
+                            glib::markup_escape_text(string.trim_start_matches("stderr").trim())
                         )
                     } else {
-                        format!("{}\n", glib::markup_escape_text(string))
-                    }
-                } else if string.starts_with("stderr") {
-                    format!(
-                        "<span color=\"red\">{}</span>\n",
-                        glib::markup_escape_text(string.trim_start_matches("stderr").trim())
-                    )
-                } else {
-                    format!("{}\n", glib::markup_escape_text(string.trim()))
-                };
-                output_buffer.insert_markup(&mut output_buffer.end_iter(), &text);
-            }));
-            match ngspice_ret {
+                        format!("{}\n", glib::markup_escape_text(string.trim()))
+                    };
+                    output_buffer.insert_markup(&mut output_buffer.end_iter(), &text);
+                }),
+                clone!(@weak obj => move |_, _, _| {
+                    obj.close();
+                }),
+            );
+            match NgSpice::new(ngspice_cb) {
                 Ok(ngspice) => self.ngspice.set(ngspice).unwrap(),
                 Err(err) => {
                     tracing::error!("Failed to initialize ngspice: {:?}", err);
@@ -388,16 +393,6 @@ impl Window {
 
         let command = imp.command_entry.text();
         imp.command_entry.set_text("");
-
-        // Override quit and exit commands
-        if command
-            .split_whitespace()
-            .next()
-            .map_or(false, |command| matches!(command.trim(), "quit" | "exit"))
-        {
-            self.close();
-            return Ok(());
-        }
 
         // Custom clear command
         if command.trim() == "clear" {
