@@ -1,31 +1,54 @@
 use std::{fmt, sync::Arc};
 
 use anyhow::Result;
+use futures_channel::mpsc;
+use futures_util::StreamExt;
+use gtk::glib;
 
 pub struct Callbacks {
-    send_char: Box<dyn Fn(&str)>,
-    controlled_exit: Box<dyn Fn(i32, bool, bool)>,
+    send_char_tx: mpsc::UnboundedSender<String>,
+    controlled_exit_tx: mpsc::UnboundedSender<(i32, bool, bool)>,
 }
 
 impl Callbacks {
     pub fn new(
-        send_char: impl Fn(&str) + 'static,
+        send_char: impl Fn(String) + 'static,
         controlled_exit: impl Fn(i32, bool, bool) + 'static,
     ) -> Self {
+        let ctx = glib::MainContext::default();
+
+        let (send_char_tx, mut send_char_rx) = mpsc::unbounded();
+        ctx.spawn_local(async move {
+            while let Some(string) = send_char_rx.next().await {
+                send_char(string);
+            }
+        });
+
+        let (controlled_exit_tx, mut controlled_exit_rx) = mpsc::unbounded();
+        ctx.spawn_local(async move {
+            while let Some((status, unload, quit)) = controlled_exit_rx.next().await {
+                controlled_exit(status, unload, quit);
+            }
+        });
+
         Self {
-            send_char: Box::new(send_char),
-            controlled_exit: Box::new(controlled_exit),
+            send_char_tx,
+            controlled_exit_tx,
         }
     }
 }
 
 impl elektron_ngspice::Callbacks for Callbacks {
-    fn send_char(&mut self, s: &str) {
-        (self.send_char)(s);
+    fn send_char(&mut self, string: &str) {
+        self.send_char_tx
+            .unbounded_send(string.to_string())
+            .unwrap();
     }
 
     fn controlled_exit(&mut self, status: i32, unload: bool, quit: bool) {
-        (self.controlled_exit)(status, unload, quit);
+        self.controlled_exit_tx
+            .unbounded_send((status, unload, quit))
+            .unwrap();
     }
 }
 
