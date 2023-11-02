@@ -484,16 +484,15 @@ impl Window {
 
         self.output_view_append_command(&command);
 
+        let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
+
         match command.split_whitespace().collect::<Vec<_>>().as_slice() {
             ["source"] => {
                 let circuit = self.circuit();
                 let circuit_text = circuit.text(&circuit.start_iter(), &circuit.end_iter(), true);
-
-                let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
                 ngspice.circuit(circuit_text.lines())?;
             }
             ["showplot"] => {
-                let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
                 let current_plot_name = ngspice.current_plot()?;
                 self.output_view_show_plot(&current_plot_name)?;
             }
@@ -504,7 +503,6 @@ impl Window {
                 imp.output_view.buffer().set_text("");
             }
             _ => {
-                let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
                 ngspice.command(&command)?;
             }
         }
