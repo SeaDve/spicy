@@ -10,6 +10,7 @@ use gettextrs::gettext;
 use gtk::{
     gio,
     glib::{self, clone},
+    graphene::Size,
 };
 use plotters_gtk4::SnapshotBackend;
 
@@ -349,15 +350,17 @@ impl Window {
                 }
             }
 
+            let width = imp.output_scrolled_window.width();
+            let height = imp.output_scrolled_window.height();
             let snapshot = current_plot_to_snapshot(
                 plot_name,
                 &time_vec,
                 &other_vecs,
-                imp.output_scrolled_window.width(),
-                imp.output_scrolled_window.height(),
+                width as u32,
+                height as u32,
             )?;
             let paintable = snapshot
-                .to_paintable(None)
+                .to_paintable(Some(&Size::new(width as f32, height as f32)))
                 .context("No paintable from snapshot")?;
 
             end_iter.forward_line();
@@ -629,15 +632,14 @@ fn current_plot_to_snapshot(
     plot_name: &str,
     time_vec: &[f64],
     other_vecs: &[(String, Vec<f64>)],
-    width: i32,
-    height: i32,
+    width: u32,
+    height: u32,
 ) -> Result<gtk::Snapshot> {
     use plotters::prelude::*;
 
     // TODO Write paintable backend supporting Adwaita dark theme and colors
     let snapshot = gtk::Snapshot::new();
-    let root_area =
-        SnapshotBackend::new(&snapshot, (width as u32, height as u32)).into_drawing_area();
+    let root_area = SnapshotBackend::new(&snapshot, (width, height)).into_drawing_area();
     root_area.fill(&WHITE)?;
 
     let x_min = *time_vec
