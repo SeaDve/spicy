@@ -847,9 +847,9 @@ checksum = "9e76628b4d3a7581389a35d5b6e2139607ad7c75b17aed325f210aa91f4a9609"
 
 [[package]]
 name = "plotters-gtk4"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "dc3fdfdbd3c01c7d827a9e52ea97a0d78cf724be4dca5f9c606cca8fbfc67283"
+checksum = "bff5ae4aa110531abd3a5f644d594ccc4b2f86157290640c1b925a1b21e567d3"
 dependencies = [
  "gtk4",
  "pangocairo",
