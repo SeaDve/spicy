@@ -349,10 +349,13 @@ impl Window {
                 }
             }
 
-            let width = imp.output_scrolled_window.width();
-            let height = imp.output_scrolled_window.height();
-            let snapshot =
-                current_plot_to_snapshot(plot_name, &time_vec, &other_vecs, width, height)?;
+            let snapshot = current_plot_to_snapshot(
+                plot_name,
+                &time_vec,
+                &other_vecs,
+                imp.output_scrolled_window.width(),
+                imp.output_scrolled_window.height(),
+            )?;
             let paintable = snapshot
                 .to_paintable(None)
                 .context("No paintable from snapshot")?;
