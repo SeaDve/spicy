@@ -778,6 +778,32 @@ dependencies = [
 ]
 
 [[package]]
+name = "pangocairo"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "57036589a9cfcacf83f9e606d15813fc6bf03f0e9e69aa2b5e3bb85af86b38a5"
+dependencies = [
+ "cairo-rs",
+ "glib",
+ "libc",
+ "pango",
+ "pangocairo-sys",
+]
+
+[[package]]
+name = "pangocairo-sys"
+version = "0.18.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc3c8ff676a37e7a72ec1d5fc029f91c407278083d2752784ff9f5188c108833"
+dependencies = [
+ "cairo-sys-rs",
+ "glib-sys",
+ "libc",
+ "pango-sys",
+ "system-deps",
+]
+
+[[package]]
 name = "peeking_take_while"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -820,12 +846,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9e76628b4d3a7581389a35d5b6e2139607ad7c75b17aed325f210aa91f4a9609"
 
 [[package]]
-name = "plotters-cairo"
-version = "0.5.0"
+name = "plotters-gtk4"
+version = "0.1.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "1a73c5d841cec447bc191e932df2d58ef6bfa349e37027bf29a3e8d759d4c85b"
+checksum = "dc3fdfdbd3c01c7d827a9e52ea97a0d78cf724be4dca5f9c606cca8fbfc67283"
 dependencies = [
- "cairo-rs",
+ "gtk4",
+ "pangocairo",
  "plotters-backend",
 ]
 
@@ -1043,7 +1070,6 @@ name = "spicy"
 version = "0.1.0"
 dependencies = [
  "anyhow",
- "cairo-rs",
  "elektron_ngspice",
  "futures-channel",
  "futures-util",
@@ -1051,7 +1077,7 @@ dependencies = [
  "gtk4",
  "libadwaita",
  "plotters",
- "plotters-cairo",
+ "plotters-gtk4",
  "sourceview5",
  "tracing",
  "tracing-subscriber",

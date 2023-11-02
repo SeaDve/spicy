@@ -8,10 +8,10 @@ use anyhow::{bail, Context, Result};
 use elektron_ngspice::ComplexSlice;
 use gettextrs::gettext;
 use gtk::{
-    gdk, gio,
+    gio,
     glib::{self, clone},
 };
-use plotters_cairo::CairoBackend;
+use plotters_gtk4::SnapshotBackend;
 
 use crate::{
     application::Application,
@@ -278,7 +278,7 @@ mod imp {
 glib::wrapper! {
     pub struct Window(ObjectSubclass<imp::Window>)
         @extends gtk::Widget, gtk::Window, gtk::ApplicationWindow,
-        @implements gio::ActionMap, gio::ActionGroup, gtk::Root;
+        @implements gio::ActionMap, gio::ActionGroup, gtk::Root, gtk::Native;
 }
 
 impl Window {
@@ -349,13 +349,13 @@ impl Window {
                 }
             }
 
-            let paintable = current_plot_to_texture(
-                plot_name,
-                &time_vec,
-                &other_vecs,
-                imp.output_scrolled_window.width(),
-                imp.output_scrolled_window.height(),
-            )?;
+            let width = imp.output_scrolled_window.width();
+            let height = imp.output_scrolled_window.height();
+            let snapshot =
+                current_plot_to_snapshot(plot_name, &time_vec, &other_vecs, width, height)?;
+            let paintable = snapshot
+                .to_paintable(None)
+                .context("No paintable from snapshot")?;
 
             end_iter.forward_line();
             output_buffer.insert_paintable(&mut end_iter, &paintable);
@@ -622,19 +622,19 @@ impl Window {
     }
 }
 
-fn current_plot_to_texture(
+fn current_plot_to_snapshot(
     plot_name: &str,
     time_vec: &[f64],
     other_vecs: &[(String, Vec<f64>)],
     width: i32,
     height: i32,
-) -> Result<gdk::Texture> {
+) -> Result<gtk::Snapshot> {
     use plotters::prelude::*;
 
     // TODO Write paintable backend supporting Adwaita dark theme and colors
-    let surface = cairo::ImageSurface::create(cairo::Format::ARgb32, width, height)?;
-    let context = cairo::Context::new(&surface)?;
-    let root_area = CairoBackend::new(&context, (width as u32, height as u32))?.into_drawing_area();
+    let snapshot = gtk::Snapshot::new();
+    let root_area =
+        SnapshotBackend::new(&snapshot, (width as u32, height as u32)).into_drawing_area();
     root_area.fill(&WHITE)?;
 
     let x_min = *time_vec
@@ -694,9 +694,8 @@ fn current_plot_to_texture(
         .border_style(BLACK)
         .draw()?;
 
-    let mut png_bytes = Vec::new();
-    surface.write_to_png(&mut png_bytes)?;
-    let texture = gdk::Texture::from_bytes(&glib::Bytes::from_owned(png_bytes))?;
+    drop(cc);
+    drop(root_area);
 
-    Ok(texture)
+    Ok(snapshot)
 }
