@@ -660,9 +660,12 @@ fn current_plot_to_texture(
         .context("Empty other data")?;
 
     let mut cc = ChartBuilder::on(&root_area)
-        .margin(5)
+        .margin_left(10)
+        .margin_right(20)
+        .margin_top(20)
+        .margin_bottom(10)
         .x_label_area_size(40)
-        .y_label_area_size(50)
+        .y_label_area_size(40)
         .caption(plot_name, ("sans-serif", 20))
         .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
 
