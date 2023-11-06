@@ -505,7 +505,7 @@ impl Window {
             ["showplot", plot_name] => {
                 self.output_view_show_plot(plot_name)?;
             }
-            ["clear", ..] => {
+            ["clear"] => {
                 imp.output_view.buffer().set_text("");
             }
             _ => {
