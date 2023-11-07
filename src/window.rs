@@ -523,12 +523,8 @@ impl Window {
     }
 
     async fn open_circuit(&self) -> Result<()> {
-        let filter = gtk::FileFilter::new();
-        filter.set_property("name", gettext("Plain Text Files"));
-        filter.add_mime_type("text/plain");
-
         let filters = gio::ListStore::new::<gtk::FileFilter>();
-        filters.append(&filter);
+        filters.append(&netlist_file_filter());
 
         let dialog = gtk::FileDialog::builder()
             .title(gettext("Open Circuit"))
@@ -553,12 +549,8 @@ impl Window {
         if circuit.file().is_some() {
             circuit.save().await?;
         } else {
-            let filter = gtk::FileFilter::new();
-            filter.set_property("name", gettext("Plain Text Files"));
-            filter.add_mime_type("text/plain");
-
             let filters = gio::ListStore::new::<gtk::FileFilter>();
-            filters.append(&filter);
+            filters.append(&netlist_file_filter());
 
             let dialog = gtk::FileDialog::builder()
                 .title(gettext("Save Circuit"))
@@ -575,12 +567,8 @@ impl Window {
     }
 
     async fn save_circuit_as(&self, circuit: &Circuit) -> Result<()> {
-        let filter = gtk::FileFilter::new();
-        filter.set_property("name", gettext("Plain Text Files"));
-        filter.add_mime_type("text/plain");
-
         let filters = gio::ListStore::new::<gtk::FileFilter>();
-        filters.append(&filter);
+        filters.append(&netlist_file_filter());
 
         let dialog = gtk::FileDialog::builder()
             .title(gettext("Save Circuit As"))
@@ -707,4 +695,15 @@ fn current_plot_to_snapshot(
     drop(root_area);
 
     Ok(snapshot)
+}
+
+fn netlist_file_filter() -> gtk::FileFilter {
+    let filter = gtk::FileFilter::new();
+    filter.set_name(Some(&gettext("SPICE Netlist Files")));
+
+    for suffix in ["cir", "net", "sp"] {
+        filter.add_suffix(suffix);
+    }
+
+    filter
 }
