@@ -374,9 +374,13 @@ impl Window {
                 let vec_info = ngspice.vector_info(&vec_name)?;
                 match vec_info.data {
                     ComplexSlice::Real(real) => {
+                        debug_assert_eq!(real.len(), 1);
+
                         writeln!(text, "{}: {}", vec_name, real[0]).unwrap();
                     }
                     ComplexSlice::Complex(complex) => {
+                        debug_assert_eq!(complex.len(), 1);
+
                         writeln!(
                             text,
                             "{}: {} + {}j",
