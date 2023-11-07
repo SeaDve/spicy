@@ -379,7 +379,7 @@ impl Window {
                     ComplexSlice::Complex(complex) => {
                         writeln!(
                             text,
-                            "{}: {} + {}i",
+                            "{}: {} + {}j",
                             vec_name, complex[0].cx_real, complex[0].cx_imag
                         )
                         .unwrap();
