@@ -20,6 +20,7 @@ use crate::{
     config::{APP_ID, PROFILE},
     i18n::gettext_f,
     ngspice::{Callbacks, NgSpice},
+    output_view::OutputView,
     plots::Plots,
     plots_dropdown::PlotsDropdown,
 };
@@ -55,9 +56,7 @@ mod imp {
         #[template_child]
         pub(super) circuit_view: TemplateChild<gtk_source::View>,
         #[template_child]
-        pub(super) output_scrolled_window: TemplateChild<gtk::ScrolledWindow>,
-        #[template_child]
-        pub(super) output_view: TemplateChild<gtk::TextView>,
+        pub(super) output_view: TemplateChild<OutputView>,
         #[template_child]
         pub(super) plots_dropdown: TemplateChild<PlotsDropdown>,
         #[template_child]
@@ -201,7 +200,7 @@ mod imp {
             self.plots_dropdown
                 .connect_plot_activated(clone!(@weak obj => move |_, plot| {
                     let plot_name = plot.name();
-                    obj.output_view_append_command(&format!("showplot {}", plot_name));
+                    obj.imp().output_view.append_command(&format!("showplot {}", plot_name));
                     glib::spawn_future_local(async move {
                         if let Err(err) = obj.output_view_show_plot(&plot_name).await {
                             tracing::error!("Failed to show plot: {:?}", err);
@@ -221,7 +220,6 @@ mod imp {
 
             let ngspice_cb = Callbacks::new(
                 clone!(@weak obj => move |string| {
-                    let output_buffer = obj.imp().output_view.buffer();
                     let text = if string.starts_with("stdout") {
                         let string = string.trim_start_matches("stdout").trim();
                         if string.starts_with('*') {
@@ -240,8 +238,7 @@ mod imp {
                     } else {
                         format!("{}\n", glib::markup_escape_text(string.trim()))
                     };
-                    output_buffer.insert_markup(&mut output_buffer.end_iter(), &text);
-                    obj.output_view_scroll_idle(gtk::ScrollType::End);
+                    obj.imp().output_view.append_markup(&text);
                 }),
                 clone!(@weak obj => move |_, _, _| {
                     obj.close();
@@ -337,31 +334,11 @@ impl Window {
         self.imp().toast_overlay.add_toast(toast);
     }
 
-    fn output_view_scroll_idle(&self, scroll_type: gtk::ScrollType) {
-        glib::idle_add_local_once(clone!(@weak self as obj => move || {
-            obj.imp()
-                .output_scrolled_window
-                .emit_scroll_child(scroll_type, false);
-        }));
-    }
-
-    fn output_view_append_command(&self, command: &str) {
-        let output_buffer = self.imp().output_view.buffer();
-        output_buffer.insert_markup(
-            &mut output_buffer.end_iter(),
-            &format!("<span style=\"italic\">$ {}</span>\n", command),
-        );
-        self.output_view_scroll_idle(gtk::ScrollType::End);
-    }
-
     async fn output_view_show_plot(&self, plot_name: &str) -> Result<()> {
         let imp = self.imp();
 
         let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
         let vector_names = ngspice.all_vector_names(plot_name).await?;
-
-        let output_buffer = imp.output_view.buffer();
-        let mut end_iter = output_buffer.end_iter();
 
         if vector_names.iter().any(|name| name == "time") {
             let mut time_vector = Vec::new();
@@ -379,8 +356,8 @@ impl Window {
                 }
             }
 
-            let width = imp.output_scrolled_window.width();
-            let height = imp.output_scrolled_window.height();
+            let width = imp.output_view.width();
+            let height = imp.output_view.height();
             let snapshot = current_plot_to_snapshot(
                 plot_name,
                 &time_vector,
@@ -392,11 +369,8 @@ impl Window {
                 .to_paintable(Some(&Size::new(width as f32, height as f32)))
                 .context("No paintable from snapshot")?;
 
-            end_iter.forward_line();
-            output_buffer.insert_paintable(&mut end_iter, &paintable);
-
-            end_iter.forward_to_line_end();
-            output_buffer.insert(&mut end_iter, "\n");
+            imp.output_view.append_paintable(&paintable);
+            imp.output_view.append_text("\n");
         } else {
             let mut text = String::new();
             for vector_name in vector_names {
@@ -420,10 +394,8 @@ impl Window {
                 }
             }
 
-            output_buffer.insert(&mut end_iter, &text);
+            imp.output_view.append_text(&text);
         }
-
-        self.output_view_scroll_idle(gtk::ScrollType::End);
 
         Ok(())
     }
@@ -507,7 +479,7 @@ impl Window {
         let circuit = self.circuit();
         let circuit_text = circuit.text(&circuit.start_iter(), &circuit.end_iter(), true);
 
-        self.output_view_append_command("source");
+        imp.output_view.append_command("source");
 
         let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
         ngspice.circuit(circuit_text.lines()).await?;
@@ -523,7 +495,7 @@ impl Window {
         let command = imp.command_entry.text();
         imp.command_entry.set_text("");
 
-        self.output_view_append_command(&command);
+        imp.output_view.append_command(&command);
 
         let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
 
@@ -541,7 +513,7 @@ impl Window {
                 self.output_view_show_plot(plot_name).await?;
             }
             ["clear"] => {
-                imp.output_view.buffer().set_text("");
+                imp.output_view.clear();
             }
             _ => {
                 ngspice.command(command).await?;

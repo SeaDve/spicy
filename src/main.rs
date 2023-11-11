@@ -28,6 +28,7 @@ mod circuit;
 mod config;
 mod i18n;
 mod ngspice;
+mod output_view;
 mod plot;
 mod plots;
 mod plots_dropdown;

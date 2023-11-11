@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<interface>
+  <template class="SpicyOutputView">
+    <property name="layout-manager">
+      <object class="GtkBinLayout"/>
+    </property>
+    <child>
+      <object class="GtkScrolledWindow" id="scrolled_window">
+        <child>
+          <object class="GtkTextView" id="text_view">
+            <property name="top-margin">12</property>
+            <property name="bottom-margin">12</property>
+            <property name="left-margin">12</property>
+            <property name="right-margin">12</property>
+            <property name="monospace">True</property>
+            <property name="editable">False</property>
+            <property name="cursor-visible">False</property>
+          </object>
+        </child>
+      </object>
+    </child>
+  </template>
+</interface>
