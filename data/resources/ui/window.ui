@@ -61,7 +61,7 @@
                 </property>
                 <child>
                   <object class="GtkButton">
-                    <property name="tooltip-text">Load Circuit</property>
+                    <property name="tooltip-text" translatable="yes">Load Circuit</property>
                     <property name="icon-name">media-playback-start-symbolic</property>
                     <property name="action-name">win.load-circuit</property>
                   </object>
@@ -136,7 +136,7 @@
                     </style>
                     <child>
                       <object class="SpicyPlotsDropdown" id="plots_dropdown">
-                        <property name="tooltip-text">Plots</property>
+                        <property name="tooltip-text" translatable="yes">Plots</property>
                         <property name="icon-name">graph-symbolic</property>
                       </object>
                     </child>
@@ -154,7 +154,7 @@
                       <object class="GtkButton">
                         <property name="icon-name">go-up-symbolic</property>
                         <property name="action-name">win.run-command</property>
-                        <property name="tooltip-text">Run Command</property>
+                        <property name="tooltip-text" translatable="yes">Run Command</property>
                         <style>
                           <class name="circular"/>
                           <class name="suggested-action"/>
