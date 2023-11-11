@@ -50,14 +50,8 @@ impl Plots {
         glib::Object::new()
     }
 
-    pub fn iter(&self) -> impl Iterator<Item = Plot> + '_ {
-        ListModelExtManual::iter(self).map(|item| item.unwrap())
-    }
-
     pub fn update(&self, ngspice: &NgSpice) -> Result<()> {
-        let imp = self.imp();
-
-        let mut inner = imp.inner.borrow_mut();
+        let mut inner = self.imp().inner.borrow_mut();
 
         let prev_len = inner.len() as u32;
 
