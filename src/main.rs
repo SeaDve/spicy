@@ -25,11 +25,14 @@
 
 mod application;
 mod circuit;
+mod color_widget;
 mod config;
 mod i18n;
 mod ngspice;
 mod output_view;
 mod plot;
+mod plot_view;
+mod plot_view_filter_row;
 mod plots;
 mod plots_dropdown;
 mod window;

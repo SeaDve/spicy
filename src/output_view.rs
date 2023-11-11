@@ -1,5 +1,4 @@
 use gtk::{
-    gdk,
     glib::{self, clone},
     prelude::*,
     subclass::prelude::*,
@@ -61,12 +60,6 @@ impl OutputView {
 
     pub fn append_command(&self, command: &str) {
         self.append_markup(&format!("<span style=\"italic\">$ {}</span>\n", command));
-        self.scroll_down_idle();
-    }
-
-    pub fn append_paintable(&self, paintable: &impl IsA<gdk::Paintable>) {
-        let buffer = self.imp().text_view.buffer();
-        buffer.insert_paintable(&mut buffer.end_iter(), paintable);
         self.scroll_down_idle();
     }
 

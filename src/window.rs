@@ -10,9 +10,7 @@ use gettextrs::gettext;
 use gtk::{
     gio,
     glib::{self, clone},
-    graphene::Size,
 };
-use plotters_gtk4::SnapshotBackend;
 
 use crate::{
     application::Application,
@@ -21,6 +19,7 @@ use crate::{
     i18n::gettext_f,
     ngspice::{Callbacks, NgSpice},
     output_view::OutputView,
+    plot_view::PlotView,
     plots::Plots,
     plots_dropdown::PlotsDropdown,
 };
@@ -55,6 +54,8 @@ mod imp {
         pub(super) progress_bar: TemplateChild<gtk::ProgressBar>,
         #[template_child]
         pub(super) circuit_view: TemplateChild<gtk_source::View>,
+        #[template_child]
+        pub(super) plot_view: TemplateChild<PlotView>,
         #[template_child]
         pub(super) output_view: TemplateChild<OutputView>,
         #[template_child]
@@ -356,21 +357,8 @@ impl Window {
                 }
             }
 
-            let width = imp.output_view.width();
-            let height = imp.output_view.height();
-            let snapshot = current_plot_to_snapshot(
-                plot_name,
-                &time_vector,
-                &other_vectors,
-                width as u32,
-                height as u32,
-            )?;
-            let paintable = snapshot
-                .to_paintable(Some(&Size::new(width as f32, height as f32)))
-                .context("No paintable from snapshot")?;
-
-            imp.output_view.append_paintable(&paintable);
-            imp.output_view.append_text("\n");
+            imp.plot_view.set_vectors(time_vector, other_vectors)?;
+            imp.output_view.append_text("Shown on plot view\n");
         } else {
             let mut text = String::new();
             for vector_name in vector_names {
@@ -514,6 +502,7 @@ impl Window {
             }
             ["clear"] => {
                 imp.output_view.clear();
+                imp.plot_view.clear();
             }
             _ => {
                 ngspice.command(command).await?;
@@ -621,83 +610,6 @@ impl Window {
         self.action_set_enabled("win.save-circuit", !is_circuit_busy);
         self.action_set_enabled("win.save-circuit-as", !is_circuit_busy);
     }
-}
-
-fn current_plot_to_snapshot(
-    plot_name: &str,
-    time_vector: &[f64],
-    other_vectors: &[(String, Vec<f64>)],
-    width: u32,
-    height: u32,
-) -> Result<gtk::Snapshot> {
-    use plotters::prelude::*;
-
-    // TODO Write paintable backend supporting Adwaita dark theme and colors
-    let snapshot = gtk::Snapshot::new();
-    let root_area = SnapshotBackend::new(&snapshot, (width, height)).into_drawing_area();
-    root_area.fill(&WHITE)?;
-
-    let x_min = *time_vector
-        .iter()
-        .min_by(|a, b| a.total_cmp(b))
-        .context("Empty time data")?;
-    let x_max = *time_vector
-        .iter()
-        .max_by(|a, b| a.total_cmp(b))
-        .context("Empty time data")?;
-
-    let y_min = *other_vectors
-        .iter()
-        .flat_map(|(_, vector)| vector.iter())
-        .min_by(|a, b| a.total_cmp(b))
-        .context("Empty other data")?;
-    let y_max = *other_vectors
-        .iter()
-        .flat_map(|(_, vector)| vector.iter())
-        .max_by(|a, b| a.total_cmp(b))
-        .context("Empty other data")?;
-
-    let mut cc = ChartBuilder::on(&root_area)
-        .margin_left(10)
-        .margin_right(20)
-        .margin_top(20)
-        .margin_bottom(10)
-        .x_label_area_size(40)
-        .y_label_area_size(40)
-        .caption(plot_name, ("sans-serif", 20))
-        .build_cartesian_2d(x_min..x_max, y_min..y_max)?;
-
-    cc.configure_mesh()
-        .x_desc("Time (ms)")
-        .x_label_formatter(&|v| format!("{:.0}", v * 1e3))
-        .y_label_formatter(&|v| format!("{:.1}", v))
-        .draw()?;
-
-    let colors = [RED, GREEN, BLUE, CYAN, MAGENTA, YELLOW];
-    for ((name, vector), color) in other_vectors.iter().zip(colors.into_iter().cycle()) {
-        let style = ShapeStyle {
-            color: color.into(),
-            filled: true,
-            stroke_width: 1,
-        };
-        cc.draw_series(LineSeries::new(
-            time_vector.iter().copied().zip(vector.iter().copied()),
-            style,
-        ))?
-        .label(name)
-        .legend(move |(x, y)| PathElement::new([(x, y), (x + 20, y)], style));
-    }
-
-    cc.configure_series_labels()
-        .position(SeriesLabelPosition::UpperRight)
-        .background_style(WHITE.mix(0.8))
-        .border_style(BLACK)
-        .draw()?;
-
-    drop(cc);
-    drop(root_area);
-
-    Ok(snapshot)
 }
 
 fn netlist_file_filter() -> gtk::FileFilter {

@@ -33,6 +33,13 @@
     </section>
   </menu>
   <template class="SpicyWindow" parent="AdwApplicationWindow">
+    <object class="GtkSizeGroup">
+      <property name="mode">horizontal</property>
+      <widgets>
+        <widget name="start_view"/>
+        <widget name="end_view"/>
+      </widgets>
+    </object>
     <property name="content">
       <object class="AdwToastOverlay" id="toast_overlay">
         <property name="child">
@@ -81,7 +88,7 @@
                 <property name="child">
                   <object class="GtkBox">
                     <child>
-                      <object class="GtkScrolledWindow">
+                      <object class="GtkScrolledWindow" id="start_view">
                         <property name="hexpand">True</property>
                         <child>
                           <object class="GtkSourceView" id="circuit_view">
@@ -99,8 +106,22 @@
                       <object class="GtkSeparator"/>
                     </child>
                     <child>
-                      <object class="SpicyOutputView" id="output_view">
+                      <object class="GtkBox" id="end_view">
+                        <property name="orientation">vertical</property>
                         <property name="hexpand">True</property>
+                        <child>
+                          <object class="SpicyPlotView" id="plot_view">
+                            <property name="vexpand">True</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkSeparator"/>
+                        </child>
+                        <child>
+                          <object class="SpicyOutputView" id="output_view">
+                            <property name="vexpand">True</property>
+                          </object>
+                        </child>
                       </object>
                     </child>
                   </object>

@@ -1,3 +1,17 @@
+/* ColorWidget */
+
+colorwidget {
+  border-radius: 50%;
+}
+
+/* PlotViewFilterRow */
+
+plotviewfilterrow {
+  padding: 6px 12px;
+}
+
+/* Window */
+
 entry.circular {
   border-radius: 9999px;
 }
