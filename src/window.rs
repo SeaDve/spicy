@@ -20,6 +20,8 @@ use crate::{
     config::{APP_ID, PROFILE},
     i18n::gettext_f,
     ngspice::{Callbacks, NgSpice},
+    plots::Plots,
+    plots_dropdown::PlotsDropdown,
 };
 
 /// Indicates that a task was cancelled.
@@ -57,12 +59,15 @@ mod imp {
         #[template_child]
         pub(super) output_view: TemplateChild<gtk::TextView>,
         #[template_child]
+        pub(super) plots_dropdown: TemplateChild<PlotsDropdown>,
+        #[template_child]
         pub(super) command_entry: TemplateChild<gtk::Entry>,
 
         pub(super) circuit_binding_group: glib::BindingGroup,
         pub(super) circuit_signal_group: OnceCell<glib::SignalGroup>,
 
         pub(super) ngspice: OnceCell<NgSpice>,
+        pub(super) plots: Plots,
     }
 
     #[glib::object_subclass]
@@ -192,6 +197,19 @@ mod imp {
             );
             self.circuit_signal_group.set(circuit_signal_group).unwrap();
 
+            self.plots_dropdown.bind_plots(&self.plots);
+            self.plots_dropdown
+                .connect_plot_activated(clone!(@weak obj => move |_, plot| {
+                    let plot_name = plot.name();
+                    obj.output_view_append_command(&format!("showplot {}", plot_name));
+                    if let Err(err) = obj.output_view_show_plot(&plot_name) {
+                        tracing::error!("Failed to show plot: {:?}", err);
+                        obj.add_message_toast(&gettext("Failed to show plot"));
+                    } else {
+                        obj.output_view_scroll_idle(gtk::ScrollType::End);
+                    }
+                }));
+
             self.command_entry
                 .connect_changed(clone!(@weak obj => move |_| {
                     obj.update_run_command_action();
@@ -229,7 +247,13 @@ mod imp {
                 }),
             );
             match NgSpice::new(ngspice_cb) {
-                Ok(ngspice) => self.ngspice.set(ngspice).unwrap(),
+                Ok(ngspice) => {
+                    if let Err(err) = self.plots.update(&ngspice) {
+                        tracing::error!("Failed to update plots: {:?}", err);
+                    }
+
+                    self.ngspice.set(ngspice).unwrap();
+                }
                 Err(err) => {
                     tracing::error!("Failed to initialize ngspice: {:?}", err);
                     obj.add_message_toast(&gettext("Can't initialize Ngspice"));
@@ -309,11 +333,11 @@ impl Window {
         self.imp().toast_overlay.add_toast(toast);
     }
 
-    fn output_view_scroll_idle(&self, scroll_type: gtk::ScrollType, horizontal: bool) {
+    fn output_view_scroll_idle(&self, scroll_type: gtk::ScrollType) {
         glib::idle_add_local_once(clone!(@weak self as obj => move || {
             obj.imp()
                 .output_scrolled_window
-                .emit_scroll_child(scroll_type, horizontal);
+                .emit_scroll_child(scroll_type, false);
         }));
     }
 
@@ -481,7 +505,9 @@ impl Window {
         let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
         ngspice.circuit(circuit_text.lines())?;
 
-        self.output_view_scroll_idle(gtk::ScrollType::End, false);
+        imp.plots.update(ngspice)?;
+
+        self.output_view_scroll_idle(gtk::ScrollType::End);
 
         Ok(())
     }
@@ -517,7 +543,9 @@ impl Window {
             }
         }
 
-        self.output_view_scroll_idle(gtk::ScrollType::End, false);
+        imp.plots.update(ngspice)?;
+
+        self.output_view_scroll_idle(gtk::ScrollType::End);
 
         Ok(())
     }

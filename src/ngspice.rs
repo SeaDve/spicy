@@ -91,6 +91,10 @@ impl NgSpice {
         Ok(self.inner.current_plot()?)
     }
 
+    pub fn all_plots(&self) -> Result<Vec<String>> {
+        Ok(self.inner.all_plots()?)
+    }
+
     pub fn all_vecs(&self, plot_name: &str) -> Result<Vec<String>> {
         Ok(self.inner.all_vecs(plot_name)?)
     }

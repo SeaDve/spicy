@@ -28,6 +28,9 @@ mod circuit;
 mod config;
 mod i18n;
 mod ngspice;
+mod plot;
+mod plots;
+mod plots_dropdown;
 mod window;
 
 use gettextrs::{gettext, LocaleCategory};

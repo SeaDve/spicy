@@ -33,9 +33,9 @@
     </section>
   </menu>
   <template class="SpicyWindow" parent="AdwApplicationWindow">
-    <child>
+    <property name="content">
       <object class="AdwToastOverlay" id="toast_overlay">
-        <child>
+        <property name="child">
           <object class="AdwToolbarView">
             <property name="top-bar-style">raised</property>
             <property name="bottom-bar-style">raised</property>
@@ -129,13 +129,17 @@
             </property>
             <child type="bottom">
               <object class="AdwClamp">
-                <property name="margin-start">6</property>
-                <property name="margin-end">6</property>
-                <property name="margin-top">6</property>
-                <property name="margin-bottom">6</property>
                 <child>
                   <object class="GtkBox">
-                    <property name="spacing">6</property>
+                    <style>
+                      <class name="toolbar"/>
+                    </style>
+                    <child>
+                      <object class="SpicyPlotsDropdown" id="plots_dropdown">
+                        <property name="tooltip-text">Plots</property>
+                        <property name="icon-name">graph-symbolic</property>
+                      </object>
+                    </child>
                     <child>
                       <object class="GtkEntry" id="command_entry">
                         <property name="hexpand">True</property>
@@ -162,8 +166,8 @@
               </object>
             </child>
           </object>
-        </child>
+        </property>
       </object>
-    </child>
+    </property>
   </template>
 </interface>
