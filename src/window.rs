@@ -79,15 +79,15 @@ mod imp {
         fn class_init(klass: &mut Self::Class) {
             klass.bind_template();
 
-            klass.install_action("win.load-circuit", None, |obj, _, _| {
-                if let Err(err) = obj.load_circuit() {
+            klass.install_action_async("win.load-circuit", None, |obj, _, _| async move {
+                if let Err(err) = obj.load_circuit().await {
                     tracing::error!("Failed to load circuit: {:?}", err);
                     obj.add_message_toast(&gettext("Failed to load circuit"));
                 }
             });
 
-            klass.install_action("win.run-command", None, |obj, _, _| {
-                if let Err(err) = obj.run_command() {
+            klass.install_action_async("win.run-command", None, |obj, _, _| async move {
+                if let Err(err) = obj.run_command().await {
                     tracing::error!("Failed to run command: {:?}", err);
                     obj.add_message_toast(&gettext("Failed to run command"));
                 }
@@ -202,12 +202,12 @@ mod imp {
                 .connect_plot_activated(clone!(@weak obj => move |_, plot| {
                     let plot_name = plot.name();
                     obj.output_view_append_command(&format!("showplot {}", plot_name));
-                    if let Err(err) = obj.output_view_show_plot(&plot_name) {
-                        tracing::error!("Failed to show plot: {:?}", err);
-                        obj.add_message_toast(&gettext("Failed to show plot"));
-                    } else {
-                        obj.output_view_scroll_idle(gtk::ScrollType::End);
-                    }
+                    glib::spawn_future_local(async move {
+                        if let Err(err) = obj.output_view_show_plot(&plot_name).await {
+                            tracing::error!("Failed to show plot: {:?}", err);
+                            obj.add_message_toast(&gettext("Failed to show plot"));
+                        }
+                    });
                 }));
 
             self.command_entry
@@ -241,6 +241,7 @@ mod imp {
                         format!("{}\n", glib::markup_escape_text(string.trim()))
                     };
                     output_buffer.insert_markup(&mut output_buffer.end_iter(), &text);
+                    obj.output_view_scroll_idle(gtk::ScrollType::End);
                 }),
                 clone!(@weak obj => move |_, _, _| {
                     obj.close();
@@ -248,11 +249,15 @@ mod imp {
             );
             match NgSpice::new(ngspice_cb) {
                 Ok(ngspice) => {
-                    if let Err(err) = self.plots.update(&ngspice) {
-                        tracing::error!("Failed to update plots: {:?}", err);
-                    }
-
                     self.ngspice.set(ngspice).unwrap();
+
+                    glib::spawn_future_local(clone!(@weak obj => async move {
+                        let imp = obj.imp();
+                        let ngspice = imp.ngspice.get().unwrap();
+                        if let Err(err) = imp.plots.update(ngspice).await {
+                            tracing::error!("Failed to update plots: {:?}", err);
+                        }
+                    }));
                 }
                 Err(err) => {
                     tracing::error!("Failed to initialize ngspice: {:?}", err);
@@ -282,8 +287,7 @@ mod imp {
 
             let curr_circuit = obj.circuit();
             if curr_circuit.is_modified() {
-                let ctx = glib::MainContext::default();
-                ctx.spawn_local(clone!(@weak obj => async move {
+                glib::spawn_future_local(clone!(@weak obj => async move {
                     if obj.handle_unsaved_changes(&curr_circuit).await.is_err() {
                         return;
                     }
@@ -347,30 +351,31 @@ impl Window {
             &mut output_buffer.end_iter(),
             &format!("<span style=\"italic\">$ {}</span>\n", command),
         );
+        self.output_view_scroll_idle(gtk::ScrollType::End);
     }
 
-    fn output_view_show_plot(&self, plot_name: &str) -> Result<()> {
+    async fn output_view_show_plot(&self, plot_name: &str) -> Result<()> {
         let imp = self.imp();
 
         let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
-        let vec_names = ngspice.all_vecs(plot_name)?;
+        let vector_names = ngspice.all_vector_names(plot_name).await?;
 
         let output_buffer = imp.output_view.buffer();
         let mut end_iter = output_buffer.end_iter();
 
-        if vec_names.iter().any(|name| name == "time") {
-            let mut time_vec = Vec::new();
-            let mut other_vecs = Vec::new();
-            for vec_name in vec_names {
-                let vec_info = ngspice.vector_info(&vec_name)?;
-                let real = match &vec_info.data {
+        if vector_names.iter().any(|name| name == "time") {
+            let mut time_vector = Vec::new();
+            let mut other_vectors = Vec::new();
+            for vector_name in vector_names {
+                let vector_info = ngspice.vector_info(&vector_name).await?;
+                let real = match &vector_info.data {
                     ComplexSlice::Real(real) => real,
                     ComplexSlice::Complex(_) => bail!("Data contains complex"),
                 };
-                if vec_name == "time" {
-                    time_vec.extend_from_slice(real);
+                if vector_name == "time" {
+                    time_vector.extend_from_slice(real);
                 } else {
-                    other_vecs.push((vec_name, real.to_vec()));
+                    other_vectors.push((vector_name, real.to_vec()));
                 }
             }
 
@@ -378,8 +383,8 @@ impl Window {
             let height = imp.output_scrolled_window.height();
             let snapshot = current_plot_to_snapshot(
                 plot_name,
-                &time_vec,
-                &other_vecs,
+                &time_vector,
+                &other_vectors,
                 width as u32,
                 height as u32,
             )?;
@@ -394,13 +399,13 @@ impl Window {
             output_buffer.insert(&mut end_iter, "\n");
         } else {
             let mut text = String::new();
-            for vec_name in vec_names {
-                let vec_info = ngspice.vector_info(&vec_name)?;
-                match vec_info.data {
+            for vector_name in vector_names {
+                let vector_info = ngspice.vector_info(&vector_name).await?;
+                match vector_info.data {
                     ComplexSlice::Real(real) => {
                         debug_assert_eq!(real.len(), 1);
 
-                        writeln!(text, "{}: {}", vec_name, real[0]).unwrap();
+                        writeln!(text, "{}: {}", vector_name, real[0]).unwrap();
                     }
                     ComplexSlice::Complex(complex) => {
                         debug_assert_eq!(complex.len(), 1);
@@ -408,7 +413,7 @@ impl Window {
                         writeln!(
                             text,
                             "{}: {} + {}j",
-                            vec_name, complex[0].cx_real, complex[0].cx_imag
+                            vector_name, complex[0].cx_real, complex[0].cx_imag
                         )
                         .unwrap();
                     }
@@ -417,6 +422,8 @@ impl Window {
 
             output_buffer.insert(&mut end_iter, &text);
         }
+
+        self.output_view_scroll_idle(gtk::ScrollType::End);
 
         Ok(())
     }
@@ -494,7 +501,7 @@ impl Window {
         }
     }
 
-    fn load_circuit(&self) -> Result<()> {
+    async fn load_circuit(&self) -> Result<()> {
         let imp = self.imp();
 
         let circuit = self.circuit();
@@ -503,16 +510,14 @@ impl Window {
         self.output_view_append_command("source");
 
         let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
-        ngspice.circuit(circuit_text.lines())?;
+        ngspice.circuit(circuit_text.lines()).await?;
 
-        imp.plots.update(ngspice)?;
-
-        self.output_view_scroll_idle(gtk::ScrollType::End);
+        imp.plots.update(ngspice).await?;
 
         Ok(())
     }
 
-    fn run_command(&self) -> Result<()> {
+    async fn run_command(&self) -> Result<()> {
         let imp = self.imp();
 
         let command = imp.command_entry.text();
@@ -526,26 +531,24 @@ impl Window {
             ["source"] => {
                 let circuit = self.circuit();
                 let circuit_text = circuit.text(&circuit.start_iter(), &circuit.end_iter(), true);
-                ngspice.circuit(circuit_text.lines())?;
+                ngspice.circuit(circuit_text.lines()).await?;
             }
             ["showplot"] => {
-                let current_plot_name = ngspice.current_plot()?;
-                self.output_view_show_plot(&current_plot_name)?;
+                let current_plot_name = ngspice.current_plot_name().await?;
+                self.output_view_show_plot(&current_plot_name).await?;
             }
             ["showplot", plot_name] => {
-                self.output_view_show_plot(plot_name)?;
+                self.output_view_show_plot(plot_name).await?;
             }
             ["clear"] => {
                 imp.output_view.buffer().set_text("");
             }
             _ => {
-                ngspice.command(&command)?;
+                ngspice.command(command).await?;
             }
         }
 
-        imp.plots.update(ngspice)?;
-
-        self.output_view_scroll_idle(gtk::ScrollType::End);
+        imp.plots.update(ngspice).await?;
 
         Ok(())
     }
@@ -650,8 +653,8 @@ impl Window {
 
 fn current_plot_to_snapshot(
     plot_name: &str,
-    time_vec: &[f64],
-    other_vecs: &[(String, Vec<f64>)],
+    time_vector: &[f64],
+    other_vectors: &[(String, Vec<f64>)],
     width: u32,
     height: u32,
 ) -> Result<gtk::Snapshot> {
@@ -662,23 +665,23 @@ fn current_plot_to_snapshot(
     let root_area = SnapshotBackend::new(&snapshot, (width, height)).into_drawing_area();
     root_area.fill(&WHITE)?;
 
-    let x_min = *time_vec
+    let x_min = *time_vector
         .iter()
         .min_by(|a, b| a.total_cmp(b))
         .context("Empty time data")?;
-    let x_max = *time_vec
+    let x_max = *time_vector
         .iter()
         .max_by(|a, b| a.total_cmp(b))
         .context("Empty time data")?;
 
-    let y_min = *other_vecs
+    let y_min = *other_vectors
         .iter()
-        .flat_map(|(_, vec)| vec.iter())
+        .flat_map(|(_, vector)| vector.iter())
         .min_by(|a, b| a.total_cmp(b))
         .context("Empty other data")?;
-    let y_max = *other_vecs
+    let y_max = *other_vectors
         .iter()
-        .flat_map(|(_, vec)| vec.iter())
+        .flat_map(|(_, vector)| vector.iter())
         .max_by(|a, b| a.total_cmp(b))
         .context("Empty other data")?;
 
@@ -699,14 +702,14 @@ fn current_plot_to_snapshot(
         .draw()?;
 
     let colors = [RED, GREEN, BLUE, CYAN, MAGENTA, YELLOW];
-    for ((name, vec), color) in other_vecs.iter().zip(colors.into_iter().cycle()) {
+    for ((name, vector), color) in other_vectors.iter().zip(colors.into_iter().cycle()) {
         let style = ShapeStyle {
             color: color.into(),
             filled: true,
             stroke_width: 1,
         };
         cc.draw_series(LineSeries::new(
-            time_vec.iter().copied().zip(vec.iter().copied()),
+            time_vector.iter().copied().zip(vector.iter().copied()),
             style,
         ))?
         .label(name)

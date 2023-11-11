@@ -50,26 +50,32 @@ impl Plots {
         glib::Object::new()
     }
 
-    pub fn update(&self, ngspice: &NgSpice) -> Result<()> {
-        let mut inner = self.imp().inner.borrow_mut();
+    pub async fn update(&self, ngspice: &NgSpice) -> Result<()> {
+        let imp = self.imp();
 
-        let prev_len = inner.len() as u32;
+        let prev_len = imp.inner.borrow().len() as u32;
 
-        inner.clear();
+        imp.inner.borrow_mut().clear();
 
-        let current_plot_name = ngspice.current_plot()?;
-        inner.extend(
-            ngspice
-                .all_plots()?
-                .into_iter()
-                .map(|plot_name| Plot::new(&plot_name, plot_name == current_plot_name)),
+        let current_plot_name = ngspice.current_plot_name().await?;
+        let new_plots = ngspice
+            .all_plot_names()
+            .await?
+            .into_iter()
+            .map(|plot_name| Plot::new(&plot_name, plot_name == current_plot_name));
+        imp.inner.borrow_mut().extend(new_plots);
+
+        debug_assert_eq!(
+            imp.inner
+                .borrow()
+                .iter()
+                .filter(|plot| plot.is_current())
+                .count(),
+            1
         );
 
-        debug_assert_eq!(inner.iter().filter(|plot| plot.is_current()).count(), 1);
+        let new_len = imp.inner.borrow().len() as u32;
 
-        let new_len = inner.len() as u32;
-
-        drop(inner);
         self.items_changed(0, prev_len, new_len);
 
         Ok(())

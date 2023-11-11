@@ -4,7 +4,7 @@ use anyhow::Result;
 use elektron_ngspice::VectorInfo;
 use futures_channel::mpsc;
 use futures_util::StreamExt;
-use gtk::glib;
+use gtk::{gio, glib};
 
 pub struct Callbacks {
     send_char_tx: mpsc::UnboundedSender<String>,
@@ -16,17 +16,15 @@ impl Callbacks {
         send_char: impl Fn(String) + 'static,
         controlled_exit: impl Fn(i32, bool, bool) + 'static,
     ) -> Self {
-        let ctx = glib::MainContext::default();
-
         let (send_char_tx, mut send_char_rx) = mpsc::unbounded();
-        ctx.spawn_local(async move {
+        glib::spawn_future_local(async move {
             while let Some(string) = send_char_rx.next().await {
                 send_char(string);
             }
         });
 
         let (controlled_exit_tx, mut controlled_exit_rx) = mpsc::unbounded();
-        ctx.spawn_local(async move {
+        glib::spawn_future_local(async move {
             while let Some((status, unload, quit)) = controlled_exit_rx.next().await {
                 controlled_exit(status, unload, quit);
             }
@@ -81,30 +79,60 @@ impl NgSpice {
         Ok(Self { inner })
     }
 
-    pub fn circuit(&self, circuit: impl IntoIterator<Item = impl Into<String>>) -> Result<()> {
-        self.inner
-            .circuit(circuit.into_iter().map(|s| s.into()).collect::<Vec<_>>())?;
+    pub async fn circuit(
+        &self,
+        circuit: impl IntoIterator<Item = impl Into<String>>,
+    ) -> Result<()> {
+        let circuit = circuit.into_iter().map(|s| s.into()).collect::<Vec<_>>();
+        self.unblock_with_inner(|inner| inner.circuit(circuit))
+            .await?;
         Ok(())
     }
 
-    pub fn current_plot(&self) -> Result<String> {
-        Ok(self.inner.current_plot()?)
+    pub async fn current_plot_name(&self) -> Result<String> {
+        let current_plot_name = self
+            .unblock_with_inner(|inner| inner.current_plot())
+            .await?;
+        Ok(current_plot_name)
     }
 
-    pub fn all_plots(&self) -> Result<Vec<String>> {
-        Ok(self.inner.all_plots()?)
+    pub async fn all_plot_names(&self) -> Result<Vec<String>> {
+        let all_plot_names = self.unblock_with_inner(|inner| inner.all_plots()).await?;
+        Ok(all_plot_names)
     }
 
-    pub fn all_vecs(&self, plot_name: &str) -> Result<Vec<String>> {
-        Ok(self.inner.all_vecs(plot_name)?)
+    pub async fn all_vector_names(&self, plot_name: impl Into<String>) -> Result<Vec<String>> {
+        let plot_name = plot_name.into();
+        let all_vector_names = self
+            .unblock_with_inner(move |inner| inner.all_vecs(&plot_name))
+            .await?;
+        Ok(all_vector_names)
     }
 
-    pub fn vector_info(&self, vec_name: &str) -> Result<VectorInfo<'_>> {
-        Ok(self.inner.vector_info(vec_name)?)
+    pub async fn vector_info(&self, vector_name: impl Into<String>) -> Result<VectorInfo<'_>> {
+        let vec_name = vector_name.into();
+        let vector_info = self
+            .unblock_with_inner(move |inner| inner.vector_info(&vec_name))
+            .await?;
+        Ok(vector_info)
     }
 
-    pub fn command(&self, command: &str) -> Result<()> {
-        self.inner.command(command)?;
+    pub async fn command(&self, command: impl Into<String>) -> Result<()> {
+        let command = command.into();
+        self.unblock_with_inner(move |inner| inner.command(&command))
+            .await?;
         Ok(())
+    }
+
+    #[must_use]
+    async fn unblock_with_inner<F, R>(&self, func: F) -> R
+    where
+        F: FnOnce(&elektron_ngspice::NgSpice<'static, Callbacks>) -> R + Send + 'static,
+        R: Send + 'static,
+    {
+        let inner = self.inner.clone();
+        gio::spawn_blocking(move || func(&inner))
+            .await
+            .expect("Failed to spawn blocking task")
     }
 }

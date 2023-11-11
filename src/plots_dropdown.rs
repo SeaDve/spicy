@@ -99,10 +99,6 @@ glib::wrapper! {
 }
 
 impl PlotsDropdown {
-    pub fn new() -> Self {
-        glib::Object::new()
-    }
-
     pub fn connect_plot_activated<F>(&self, cb: F) -> glib::SignalHandlerId
     where
         F: Fn(&Self, &Plot) + 'static,
