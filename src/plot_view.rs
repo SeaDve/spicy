@@ -8,7 +8,17 @@ use gtk::{
 use plotters::style::RGBAColor;
 use plotters_gtk4::SnapshotBackend;
 
-use crate::plot_view_filter_row::PlotViewFilterRow;
+use crate::{colors, plot_view_filter_row::PlotViewFilterRow};
+
+const COLORS: [gdk::RGBA; 7] = [
+    colors::BLUE_3,
+    colors::GREEN_3,
+    colors::YELLOW_3,
+    colors::ORANGE_3,
+    colors::RED_3,
+    colors::PURPLE_3,
+    colors::BROWN_3,
+];
 
 struct Vector {
     name: String,
@@ -93,21 +103,18 @@ impl PlotView {
         time_vector: Vec<f64>,
         other_vectors: Vec<(String, Vec<f64>)>,
     ) -> Result<()> {
-        use plotters::prelude::*;
-
         let imp = self.imp();
 
         imp.time_vector.replace(time_vector);
 
-        let colors = [RED, GREEN, BLUE, CYAN, MAGENTA, YELLOW];
         imp.other_vectors.replace(
             other_vectors
                 .into_iter()
-                .zip(colors)
+                .zip(COLORS)
                 .map(|((name, data), color)| Vector {
                     name,
                     data,
-                    color: to_gdk_color(color.into()),
+                    color,
                     is_visible: true,
                 })
                 .collect(),
@@ -226,14 +233,5 @@ fn to_plotters_color(rgba: gdk::RGBA) -> RGBAColor {
         (rgba.green() * 255.0) as u8,
         (rgba.blue() * 255.0) as u8,
         rgba.alpha() as f64,
-    )
-}
-
-fn to_gdk_color(rgba: RGBAColor) -> gdk::RGBA {
-    gdk::RGBA::new(
-        rgba.0 as f32 / 255.0,
-        rgba.1 as f32 / 255.0,
-        rgba.2 as f32 / 255.0,
-        rgba.3 as f32,
     )
 }

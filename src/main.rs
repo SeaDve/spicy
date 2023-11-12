@@ -26,6 +26,7 @@
 mod application;
 mod circuit;
 mod color_widget;
+mod colors;
 mod config;
 mod i18n;
 mod ngspice;
