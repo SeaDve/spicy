@@ -6,8 +6,8 @@
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/status/starred-symbolic.svg</file>
     <file compressed="true">style.css</file>
     <file compressed="true" preprocess="xml-stripblanks">ui/output_view.ui</file>
-    <file compressed="true" preprocess="xml-stripblanks">ui/plot_view_filter_row.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">ui/plot_view.ui</file>
+    <file compressed="true" preprocess="xml-stripblanks">ui/plot_view_filter_row.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">ui/plots_dropdown.ui</file>
     <file compressed="true" preprocess="xml-stripblanks" alias="gtk/help-overlay.ui">ui/shortcuts.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">ui/window.ui</file>
