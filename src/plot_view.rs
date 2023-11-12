@@ -1,4 +1,4 @@
-use anyhow::{Context, Result};
+use anyhow::Result;
 use gtk::{
     gdk,
     glib::{self, clone},
@@ -6,7 +6,7 @@ use gtk::{
     subclass::prelude::*,
 };
 use plotters::style::RGBAColor;
-use plotters_gtk4::SnapshotBackend;
+use plotters_gtk4::{Paintable, PaintableBackend};
 
 use crate::{colors, plot_view_filter_row::PlotViewFilterRow};
 
@@ -36,7 +36,9 @@ mod imp {
     #[template(resource = "/io/github/seadve/Spicy/ui/plot_view.ui")]
     pub struct PlotView {
         #[template_child]
-        pub(super) picture: TemplateChild<gtk::Picture>,
+        pub(super) picture: TemplateChild<gtk::Picture>, // Unused
+        #[template_child]
+        pub(super) paintable: TemplateChild<Paintable>,
         #[template_child]
         pub(super) separator: TemplateChild<gtk::Separator>, // Unused
         #[template_child]
@@ -94,7 +96,7 @@ impl PlotView {
         let imp = self.imp();
         imp.time_vector.borrow_mut().clear();
         imp.other_vectors.borrow_mut().clear();
-        imp.picture.set_paintable(gdk::Paintable::NONE);
+        imp.paintable.clear();
         self.update_filter_list_box();
     }
 
@@ -121,19 +123,18 @@ impl PlotView {
         );
 
         self.update_filter_list_box();
-        self.update_picture()?;
+        self.update_paintable()?;
 
         Ok(())
     }
 
-    fn update_picture(&self) -> Result<()> {
+    fn update_paintable(&self) -> Result<()> {
         use plotters::prelude::*;
 
         let imp = self.imp();
 
-        // TODO Write paintable backend supporting Adwaita dark theme and colors
-        let snapshot = gtk::Snapshot::new();
-        let root_area = SnapshotBackend::new(&snapshot, (640, 480)).into_drawing_area();
+        // TODO Support Adwaita dark theme and colors
+        let root_area = PaintableBackend::new(&imp.paintable).into_drawing_area();
         root_area.fill(&WHITE)?;
 
         let time_vector = imp.time_vector.borrow();
@@ -193,12 +194,7 @@ impl PlotView {
             .legend(move |(x, y)| PathElement::new([(x, y), (x + 20, y)], style));
         }
 
-        drop(cc);
-
-        let paintable = snapshot
-            .to_paintable(None)
-            .context("No paintable from snapshot")?;
-        imp.picture.set_paintable(Some(&paintable));
+        root_area.present()?;
 
         Ok(())
     }
@@ -218,8 +214,8 @@ impl PlotView {
                     .find(|v| v.name == row.name())
                     .expect("vector must exist")
                     .is_visible = row.is_active();
-                if let Err(err) = obj.update_picture() {
-                    tracing::error!("Failed to update picture: {:?}", err);
+                if let Err(err) = obj.update_paintable() {
+                    tracing::error!("Failed to update paintable: {:?}", err);
                 }
             }));
             imp.filter_list_box.append(&row);

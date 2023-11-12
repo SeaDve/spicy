@@ -10,6 +10,12 @@
     <child>
       <object class="GtkPicture" id="picture">
         <property name="width-request">120</property>
+        <property name="paintable">
+          <object class="PlottersGtk4Paintable" id="paintable">
+            <property name="width">640</property>
+            <property name="height">480</property>
+          </object>
+        </property>
       </object>
     </child>
     <child>
