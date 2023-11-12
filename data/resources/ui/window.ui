@@ -59,6 +59,10 @@
                     </child>
                     <child>
                       <object class="GtkLabel" id="circuit_title_label">
+                        <property name="ellipsize">end</property>
+                        <property name="wrap">False</property>
+                        <property name="single-line-mode">True</property>
+                        <property name="width-chars">5</property>
                         <style>
                           <class name="heading"/>
                         </style>
