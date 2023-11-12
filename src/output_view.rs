@@ -59,7 +59,10 @@ impl OutputView {
     }
 
     pub fn append_command(&self, command: &str) {
-        self.append_markup(&format!("<span style=\"italic\">$ {}</span>\n", command));
+        self.append_markup(&format!(
+            "<span style=\"italic\">$ {}</span>\n",
+            glib::markup_escape_text(command)
+        ));
         self.scroll_down_idle();
     }
 
