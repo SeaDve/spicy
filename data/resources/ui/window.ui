@@ -37,7 +37,7 @@
       <property name="mode">horizontal</property>
       <widgets>
         <widget name="start_view"/>
-        <widget name="end_view"/>
+        <widget name="end_stack"/>
       </widgets>
     </object>
     <property name="content">
@@ -106,20 +106,30 @@
                       <object class="GtkSeparator"/>
                     </child>
                     <child>
-                      <object class="GtkBox" id="end_view">
-                        <property name="orientation">vertical</property>
+                      <object class="GtkStack" id="end_stack">
                         <property name="hexpand">True</property>
                         <child>
-                          <object class="SpicyPlotView" id="plot_view">
-                            <property name="vexpand">True</property>
+                          <object class="GtkStackPage">
+                            <property name="name">output</property>
+                            <property name="icon-name">terminal-symbolic</property>
+                            <property name="title">Output</property>
+                            <property name="child">
+                              <object class="SpicyOutputView" id="output_view">
+                                <property name="vexpand">True</property>
+                              </object>
+                            </property>
                           </object>
                         </child>
                         <child>
-                          <object class="GtkSeparator"/>
-                        </child>
-                        <child>
-                          <object class="SpicyOutputView" id="output_view">
-                            <property name="vexpand">True</property>
+                          <object class="GtkStackPage">
+                            <property name="name">plot</property>
+                            <property name="icon-name">graph-symbolic</property>
+                            <property name="title">Current Plot</property>
+                            <property name="child">
+                              <object class="SpicyPlotView" id="plot_view">
+                                <property name="vexpand">True</property>
+                              </object>
+                            </property>
                           </object>
                         </child>
                       </object>
@@ -138,39 +148,49 @@
               </object>
             </property>
             <child type="bottom">
-              <object class="AdwClamp">
-                <child>
-                  <object class="GtkBox">
-                    <style>
-                      <class name="toolbar"/>
-                    </style>
+              <object class="GtkCenterBox">
+                <style>
+                  <class name="toolbar"/>
+                </style>
+                <child type="center">
+                  <object class="AdwClamp">
                     <child>
-                      <object class="SpicyPlotsDropdown" id="plots_dropdown">
-                        <property name="tooltip-text" translatable="yes">Plots</property>
-                        <property name="icon-name">graph-symbolic</property>
+                      <object class="GtkBox">
+                        <property name="spacing">6</property>
+                        <child>
+                          <object class="SpicyPlotsDropdown" id="plots_dropdown">
+                            <property name="tooltip-text" translatable="yes">Plots</property>
+                            <property name="icon-name">graph-symbolic</property>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkEntry" id="command_entry">
+                            <property name="hexpand">True</property>
+                            <property name="placeholder-text">Enter Command</property>
+                            <property name="input-hints">no-emoji</property>
+                            <style>
+                              <class name="circular"/>
+                            </style>
+                          </object>
+                        </child>
+                        <child>
+                          <object class="GtkButton">
+                            <property name="icon-name">go-up-symbolic</property>
+                            <property name="action-name">win.run-command</property>
+                            <property name="tooltip-text" translatable="yes">Run Command</property>
+                            <style>
+                              <class name="circular"/>
+                              <class name="suggested-action"/>
+                            </style>
+                          </object>
+                        </child>
                       </object>
                     </child>
-                    <child>
-                      <object class="GtkEntry" id="command_entry">
-                        <property name="hexpand">True</property>
-                        <property name="placeholder-text">Enter Command</property>
-                        <property name="input-hints">no-emoji</property>
-                        <style>
-                          <class name="circular"/>
-                        </style>
-                      </object>
-                    </child>
-                    <child>
-                      <object class="GtkButton">
-                        <property name="icon-name">go-up-symbolic</property>
-                        <property name="action-name">win.run-command</property>
-                        <property name="tooltip-text" translatable="yes">Run Command</property>
-                        <style>
-                          <class name="circular"/>
-                          <class name="suggested-action"/>
-                        </style>
-                      </object>
-                    </child>
+                  </object>
+                </child>
+                <child type="end">
+                  <object class="GtkStackSwitcher">
+                    <property name="stack">end_stack</property>
                   </object>
                 </child>
               </object>

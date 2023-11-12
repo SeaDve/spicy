@@ -55,6 +55,8 @@ mod imp {
         #[template_child]
         pub(super) circuit_view: TemplateChild<gtk_source::View>,
         #[template_child]
+        pub(super) end_stack: TemplateChild<gtk::Stack>,
+        #[template_child]
         pub(super) plot_view: TemplateChild<PlotView>,
         #[template_child]
         pub(super) output_view: TemplateChild<OutputView>,
@@ -87,7 +89,10 @@ mod imp {
             });
 
             klass.install_action_async("win.run-command", None, |obj, _, _| async move {
-                if let Err(err) = obj.run_command().await {
+                let imp = obj.imp();
+                let command = imp.command_entry.text();
+                imp.command_entry.set_text("");
+                if let Err(err) = obj.run_command(&command).await {
                     tracing::error!("Failed to run command: {:?}", err);
                     obj.add_message_toast(&gettext("Failed to run command"));
                 }
@@ -200,10 +205,9 @@ mod imp {
             self.plots_dropdown.bind_plots(&self.plots);
             self.plots_dropdown
                 .connect_plot_activated(clone!(@weak obj => move |_, plot| {
-                    let plot_name = plot.name();
-                    obj.imp().output_view.append_command(&format!("showplot {}", plot_name));
+                    let command = format!("showplot {}", plot.name());
                     glib::spawn_future_local(async move {
-                        if let Err(err) = obj.output_view_show_plot(&plot_name).await {
+                        if let Err(err) = obj.run_command(&command).await {
                             tracing::error!("Failed to show plot: {:?}", err);
                             obj.add_message_toast(&gettext("Failed to show plot"));
                         }
@@ -239,7 +243,9 @@ mod imp {
                     } else {
                         format!("{}\n", glib::markup_escape_text(string.trim()))
                     };
-                    obj.imp().output_view.append_markup(&text);
+                    let imp = obj.imp();
+                    imp.output_view.append_markup(&text);
+                    imp.end_stack.set_visible_child_name("output");
                 }),
                 clone!(@weak obj => move |_, _, _| {
                     obj.close();
@@ -359,6 +365,7 @@ impl Window {
 
             imp.plot_view.set_vectors(time_vector, other_vectors)?;
             imp.output_view.append_text("Shown on plot view\n");
+            imp.end_stack.set_visible_child_name("plot");
         } else {
             let mut text = String::new();
             for vector_name in vector_names {
@@ -383,6 +390,7 @@ impl Window {
             }
 
             imp.output_view.append_text(&text);
+            imp.end_stack.set_visible_child_name("output");
         }
 
         Ok(())
@@ -468,6 +476,7 @@ impl Window {
         let circuit_text = circuit.text(&circuit.start_iter(), &circuit.end_iter(), true);
 
         imp.output_view.append_command("source");
+        imp.end_stack.set_visible_child_name("output");
 
         let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
         ngspice.circuit(circuit_text.lines()).await?;
@@ -477,13 +486,11 @@ impl Window {
         Ok(())
     }
 
-    async fn run_command(&self) -> Result<()> {
+    async fn run_command(&self, command: &str) -> Result<()> {
         let imp = self.imp();
 
-        let command = imp.command_entry.text();
-        imp.command_entry.set_text("");
-
-        imp.output_view.append_command(&command);
+        imp.output_view.append_command(command);
+        imp.end_stack.set_visible_child_name("output");
 
         let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
 
