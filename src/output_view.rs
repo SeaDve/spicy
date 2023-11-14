@@ -68,7 +68,6 @@ impl OutputView {
             color,
             glib::markup_escape_text(text)
         ));
-        self.scroll_down_idle();
     }
 
     pub fn appendln_command(&self, command: &str) {
@@ -76,7 +75,6 @@ impl OutputView {
             "<span style=\"italic\">$ {}</span>\n",
             glib::markup_escape_text(command)
         ));
-        self.scroll_down_idle();
     }
 
     pub fn clear(&self) {
