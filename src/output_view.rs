@@ -46,7 +46,7 @@ glib::wrapper! {
 }
 
 impl OutputView {
-    pub fn append_text(&self, text: &str) {
+    pub fn append(&self, text: &str) {
         let buffer = self.imp().text_view.buffer();
         buffer.insert(&mut buffer.end_iter(), text);
         self.scroll_down_idle();

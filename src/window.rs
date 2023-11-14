@@ -364,7 +364,7 @@ impl Window {
             }
 
             imp.plot_view.set_vectors(time_vector, other_vectors)?;
-            imp.output_view.append_text("Shown on plot view\n");
+            imp.output_view.append("Shown on plot view\n");
             imp.end_stack.set_visible_child_name("plot");
         } else {
             let mut text = String::new();
@@ -389,7 +389,7 @@ impl Window {
                 }
             }
 
-            imp.output_view.append_text(&text);
+            imp.output_view.append(&text);
             imp.end_stack.set_visible_child_name("output");
         }
 
