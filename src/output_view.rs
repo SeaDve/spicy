@@ -52,13 +52,26 @@ impl OutputView {
         self.scroll_down_idle();
     }
 
+    pub fn appendln(&self, text: &str) {
+        self.append(&format!("{}\n", text));
+    }
+
     pub fn append_markup(&self, markup: &str) {
         let buffer = self.imp().text_view.buffer();
         buffer.insert_markup(&mut buffer.end_iter(), markup);
         self.scroll_down_idle();
     }
 
-    pub fn append_command(&self, command: &str) {
+    pub fn appendln_colored(&self, text: &str, color: &str) {
+        self.append_markup(&format!(
+            "<span color=\"{}\">{}</span>\n",
+            color,
+            glib::markup_escape_text(text)
+        ));
+        self.scroll_down_idle();
+    }
+
+    pub fn appendln_command(&self, command: &str) {
         self.append_markup(&format!(
             "<span style=\"italic\">$ {}</span>\n",
             glib::markup_escape_text(command)

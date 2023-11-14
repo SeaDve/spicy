@@ -225,26 +225,20 @@ mod imp {
 
             let ngspice_cb = Callbacks::new(
                 clone!(@weak obj => move |string| {
-                    let text = if string.starts_with("stdout") {
+                    let imp = obj.imp();
+                    if string.starts_with("stdout") {
                         let string = string.trim_start_matches("stdout").trim();
                         if string.starts_with('*') {
-                            format!(
-                                "<span color=\"green\">{}</span>\n",
-                                glib::markup_escape_text(string)
-                            )
+                            imp.output_view.appendln_colored(string, "green");
                         } else {
-                            format!("{}\n", glib::markup_escape_text(string))
+                            imp.output_view.appendln(string);
                         }
                     } else if string.starts_with("stderr") {
-                        format!(
-                            "<span color=\"red\">{}</span>\n",
-                            glib::markup_escape_text(string.trim_start_matches("stderr").trim())
-                        )
+                        imp.output_view
+                            .appendln_colored(string.trim_start_matches("stderr").trim(), "red");
                     } else {
-                        format!("{}\n", glib::markup_escape_text(string.trim()))
+                        imp.output_view.appendln(&string);
                     };
-                    let imp = obj.imp();
-                    imp.output_view.append_markup(&text);
                     imp.end_stack.set_visible_child_name("output");
                 }),
                 clone!(@weak obj => move |_, _, _| {
@@ -364,7 +358,7 @@ impl Window {
             }
 
             imp.plot_view.set_vectors(time_vector, other_vectors)?;
-            imp.output_view.append("Shown on plot view\n");
+            imp.output_view.appendln("Shown on plot view");
             imp.end_stack.set_visible_child_name("plot");
         } else {
             let mut text = String::new();
@@ -475,7 +469,7 @@ impl Window {
         let circuit = self.circuit();
         let circuit_text = circuit.text(&circuit.start_iter(), &circuit.end_iter(), true);
 
-        imp.output_view.append_command("source");
+        imp.output_view.appendln_command("source");
         imp.end_stack.set_visible_child_name("output");
 
         let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
@@ -489,7 +483,7 @@ impl Window {
     async fn run_command(&self, command: &str) -> Result<()> {
         let imp = self.imp();
 
-        imp.output_view.append_command(command);
+        imp.output_view.appendln_command(command);
         imp.end_stack.set_visible_child_name("output");
 
         let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
