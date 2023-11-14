@@ -37,7 +37,7 @@ impl fmt::Display for Cancelled {
 impl error::Error for Cancelled {}
 
 mod imp {
-    use glib::once_cell::unsync::OnceCell;
+    use std::cell::OnceCell;
 
     use super::*;
 
