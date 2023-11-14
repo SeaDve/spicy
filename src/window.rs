@@ -341,7 +341,7 @@ impl Window {
         self.imp().toast_overlay.add_toast(toast);
     }
 
-    async fn output_view_show_plot(&self, plot_name: &str) -> Result<()> {
+    async fn show_plot(&self, plot_name: &str) -> Result<()> {
         let imp = self.imp();
 
         let ngspice = imp.ngspice.get().context("Ngspice was not initialized")?;
@@ -502,10 +502,10 @@ impl Window {
             }
             ["showplot"] => {
                 let current_plot_name = ngspice.current_plot_name().await?;
-                self.output_view_show_plot(&current_plot_name).await?;
+                self.show_plot(&current_plot_name).await?;
             }
             ["showplot", plot_name] => {
-                self.output_view_show_plot(plot_name).await?;
+                self.show_plot(plot_name).await?;
             }
             ["clear"] => {
                 imp.output_view.clear();
