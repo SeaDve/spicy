@@ -25,8 +25,8 @@ mod imp {
         fn class_init(klass: &mut Self::Class) {
             klass.bind_template();
 
-            klass.install_action("output-view.clear", None, |this, _, _| {
-                this.clear();
+            klass.install_action("output-view.clear", None, |obj, _, _| {
+                obj.clear();
             });
         }
 
