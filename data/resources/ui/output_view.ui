@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <interface>
+  <menu id="extra_menu">
+    <item>
+      <attribute name="label" translatable="yes">_Clear</attribute>
+      <attribute name="action">output-view.clear</attribute>
+    </item>
+  </menu>
   <template class="SpicyOutputView">
     <property name="layout-manager">
       <object class="GtkBinLayout"/>
@@ -15,6 +21,7 @@
             <property name="monospace">True</property>
             <property name="editable">False</property>
             <property name="cursor-visible">False</property>
+            <property name="extra-menu">extra_menu</property>
             <property name="buffer">
               <object class="GtkTextBuffer" id="buffer">
                 <property name="enable-undo">False</property>

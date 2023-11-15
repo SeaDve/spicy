@@ -24,6 +24,10 @@ mod imp {
 
         fn class_init(klass: &mut Self::Class) {
             klass.bind_template();
+
+            klass.install_action("output-view.clear", None, |this, _, _| {
+                this.clear();
+            });
         }
 
         fn instance_init(obj: &glib::subclass::InitializingObject<Self>) {
@@ -32,6 +36,18 @@ mod imp {
     }
 
     impl ObjectImpl for OutputView {
+        fn constructed(&self) {
+            self.parent_constructed();
+
+            let obj = self.obj();
+
+            self.buffer.connect_changed(clone!(@weak obj => move |_| {
+                obj.update_clear_action();
+            }));
+
+            obj.update_clear_action();
+        }
+
         fn dispose(&self) {
             self.dispose_template();
         }
@@ -87,5 +103,9 @@ impl OutputView {
                 .scrolled_window
                 .emit_scroll_child(gtk::ScrollType::End, false);
         }));
+    }
+
+    fn update_clear_action(&self) {
+        self.action_set_enabled("output-view.clear", self.imp().buffer.char_count() != 0);
     }
 }
