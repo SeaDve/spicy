@@ -13,7 +13,7 @@ mod imp {
         #[template_child]
         pub(super) scrolled_window: TemplateChild<gtk::ScrolledWindow>,
         #[template_child]
-        pub(super) text_view: TemplateChild<gtk::TextView>,
+        pub(super) buffer: TemplateChild<gtk::TextBuffer>,
     }
 
     #[glib::object_subclass]
@@ -47,8 +47,8 @@ glib::wrapper! {
 
 impl OutputView {
     pub fn append(&self, text: &str) {
-        let buffer = self.imp().text_view.buffer();
-        buffer.insert(&mut buffer.end_iter(), text);
+        let imp = self.imp();
+        imp.buffer.insert(&mut imp.buffer.end_iter(), text);
         self.scroll_down_idle();
     }
 
@@ -57,8 +57,8 @@ impl OutputView {
     }
 
     pub fn append_markup(&self, markup: &str) {
-        let buffer = self.imp().text_view.buffer();
-        buffer.insert_markup(&mut buffer.end_iter(), markup);
+        let imp = self.imp();
+        imp.buffer.insert_markup(&mut imp.buffer.end_iter(), markup);
         self.scroll_down_idle();
     }
 
@@ -78,7 +78,7 @@ impl OutputView {
     }
 
     pub fn clear(&self) {
-        self.imp().text_view.buffer().set_text("");
+        self.imp().buffer.set_text("");
     }
 
     fn scroll_down_idle(&self) {

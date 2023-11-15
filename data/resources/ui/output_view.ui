@@ -7,7 +7,7 @@
     <child>
       <object class="GtkScrolledWindow" id="scrolled_window">
         <child>
-          <object class="GtkTextView" id="text_view">
+          <object class="GtkTextView">
             <property name="top-margin">12</property>
             <property name="bottom-margin">12</property>
             <property name="left-margin">12</property>
@@ -15,6 +15,9 @@
             <property name="monospace">True</property>
             <property name="editable">False</property>
             <property name="cursor-visible">False</property>
+            <property name="buffer">
+              <object class="GtkTextBuffer" id="buffer"/>
+            </property>
           </object>
         </child>
       </object>
