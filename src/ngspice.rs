@@ -84,27 +84,24 @@ impl NgSpice {
         circuit: impl IntoIterator<Item = impl Into<String>>,
     ) -> Result<()> {
         let circuit = circuit.into_iter().map(|s| s.into()).collect::<Vec<_>>();
-        self.unblock_with_inner(|inner| inner.circuit(circuit))
-            .await?;
+        self.unblock(|inner| inner.circuit(circuit)).await?;
         Ok(())
     }
 
     pub async fn current_plot_name(&self) -> Result<String> {
-        let current_plot_name = self
-            .unblock_with_inner(|inner| inner.current_plot())
-            .await?;
+        let current_plot_name = self.unblock(|inner| inner.current_plot()).await?;
         Ok(current_plot_name)
     }
 
     pub async fn all_plot_names(&self) -> Result<Vec<String>> {
-        let all_plot_names = self.unblock_with_inner(|inner| inner.all_plots()).await?;
+        let all_plot_names = self.unblock(|inner| inner.all_plots()).await?;
         Ok(all_plot_names)
     }
 
     pub async fn all_vector_names(&self, plot_name: impl Into<String>) -> Result<Vec<String>> {
         let plot_name = plot_name.into();
         let all_vector_names = self
-            .unblock_with_inner(move |inner| inner.all_vecs(&plot_name))
+            .unblock(move |inner| inner.all_vecs(&plot_name))
             .await?;
         Ok(all_vector_names)
     }
@@ -112,20 +109,21 @@ impl NgSpice {
     pub async fn vector_info(&self, vector_name: impl Into<String>) -> Result<VectorInfo<'_>> {
         let vec_name = vector_name.into();
         let vector_info = self
-            .unblock_with_inner(move |inner| inner.vector_info(&vec_name))
+            .unblock(move |inner| inner.vector_info(&vec_name))
             .await?;
         Ok(vector_info)
     }
 
     pub async fn command(&self, command: impl Into<String>) -> Result<()> {
         let command = command.into();
-        self.unblock_with_inner(move |inner| inner.command(&command))
-            .await?;
+        self.unblock(move |inner| inner.command(&command)).await?;
         Ok(())
     }
 
+    /// Spawns a task on the thread pool and returns a future that resolves to
+    /// the return value of the task.
     #[must_use]
-    async fn unblock_with_inner<F, R>(&self, func: F) -> R
+    async fn unblock<F, R>(&self, func: F) -> R
     where
         F: FnOnce(&elektron_ngspice::NgSpice<'static, Callbacks>) -> R + Send + 'static,
         R: Send + 'static,
