@@ -16,7 +16,9 @@
             <property name="editable">False</property>
             <property name="cursor-visible">False</property>
             <property name="buffer">
-              <object class="GtkTextBuffer" id="buffer"/>
+              <object class="GtkTextBuffer" id="buffer">
+                <property name="enable-undo">False</property>
+              </object>
             </property>
           </object>
         </child>
