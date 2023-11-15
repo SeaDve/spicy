@@ -123,9 +123,11 @@ impl NgSpice {
     /// Spawns a task on the thread pool and returns a future that resolves to
     /// the return value of the task.
     #[must_use]
-    async fn unblock<F, R>(&self, func: F) -> R
+    async fn unblock<R>(
+        &self,
+        func: impl FnOnce(&elektron_ngspice::NgSpice<'static, Callbacks>) -> R + Send + 'static,
+    ) -> R
     where
-        F: FnOnce(&elektron_ngspice::NgSpice<'static, Callbacks>) -> R + Send + 'static,
         R: Send + 'static,
     {
         let inner = self.inner.clone();
