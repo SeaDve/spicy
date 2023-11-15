@@ -1,6 +1,7 @@
 data/io.github.seadve.Spicy.desktop.in.in
 data/io.github.seadve.Spicy.gschema.xml.in
 data/io.github.seadve.Spicy.metainfo.xml.in.in
+data/resources/ui/output_view.ui
 data/resources/ui/shortcuts.ui
 data/resources/ui/window.ui
 src/application.rs
