@@ -169,11 +169,39 @@ impl Canvas {
 
         let pointer_position = imp.pointer_position.get().unwrap();
         let drag_start = imp.drag_start.get().unwrap();
-        let dx = pointer_position.x() - drag_start.x();
-        let dy = pointer_position.y() - drag_start.y();
+        let mut dx = pointer_position.x() - drag_start.x();
+        let mut dy = pointer_position.y() - drag_start.y();
 
         if let Some(component) = imp.drag_component.borrow().as_ref() {
-            component.move_to(component.x() + dx, component.y() + dy);
+            let mut new_x = component.x() + dx;
+            let mut new_y = component.y() + dy;
+
+            let mut overshoot_x = 0.0;
+            let mut overshoot_y = 0.0;
+
+            let width = self.width() as f32;
+            let height = self.height() as f32;
+
+            // Keep the component within the canvas bounds
+            if new_x < 0.0 {
+                overshoot_x = -new_x;
+                new_x = 0.0;
+            } else if new_x + component.width() > width {
+                overshoot_x = width - (new_x + component.width());
+                new_x = width - component.width();
+            }
+            if new_y < 0.0 {
+                overshoot_y = -new_y;
+                new_y = 0.0;
+            } else if new_y + component.height() > height {
+                overshoot_y = height - (new_y + component.height());
+                new_y = height - component.height();
+            }
+
+            dx += overshoot_x;
+            dy += overshoot_y;
+
+            component.move_to(new_x, new_y);
             self.queue_draw();
         };
 
