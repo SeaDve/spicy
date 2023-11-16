@@ -14,6 +14,7 @@ use gtk::{
 
 use crate::{
     application::Application,
+    canvas::Canvas,
     circuit::Circuit,
     config::{APP_ID, PROFILE},
     i18n::gettext_f,
@@ -54,6 +55,8 @@ mod imp {
         pub(super) progress_bar: TemplateChild<gtk::ProgressBar>,
         #[template_child]
         pub(super) circuit_view: TemplateChild<gtk_source::View>,
+        #[template_child]
+        pub(super) canvas: TemplateChild<Canvas>,
         #[template_child]
         pub(super) end_stack: TemplateChild<gtk::Stack>,
         #[template_child]
