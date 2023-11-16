@@ -50,17 +50,17 @@ mod imp {
         fn snapshot(&self, snapshot: &gtk::Snapshot) {
             let obj = self.obj();
             let bounds = Rect::new(0.0, 0.0, obj.width() as f32, obj.height() as f32);
-            snapshot.append_color(&obj.color(), &bounds);
+            snapshot.append_color(&self.color.get(), &bounds);
         }
     }
 
     impl ColorWidget {
         fn set_rgba(&self, rgba: gdk::RGBA) {
-            let obj = self.obj();
-
             if self.color.get() == rgba {
                 return;
             }
+
+            let obj = self.obj();
 
             self.color.set(rgba);
             obj.queue_draw();
