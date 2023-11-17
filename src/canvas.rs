@@ -11,15 +11,15 @@ const WIDTH: i32 = 800;
 const HEIGHT: i32 = 600;
 
 #[derive(Clone)]
-pub struct Component(Rc<RefCell<ComponentInner>>);
+pub struct Item(Rc<RefCell<ItemInner>>);
 
-struct ComponentInner {
+struct ItemInner {
     bounds: Rect,
 }
 
-impl Component {
+impl Item {
     pub fn new(x: f32, y: f32, width: f32, height: f32) -> Self {
-        Self(Rc::new(RefCell::new(ComponentInner {
+        Self(Rc::new(RefCell::new(ItemInner {
             bounds: Rect::new(x, y, width, height),
         })))
     }
@@ -57,9 +57,9 @@ mod imp {
     #[derive(Default, gtk::CompositeTemplate)]
     #[template(resource = "/io/github/seadve/Spicy/ui/canvas.ui")]
     pub struct Canvas {
-        pub(super) components: RefCell<Vec<Component>>,
+        pub(super) items: RefCell<Vec<Item>>,
 
-        pub(super) drag_component: RefCell<Option<Component>>,
+        pub(super) drag_item: RefCell<Option<Item>>,
         pub(super) drag_start: Cell<Option<Point>>,
         pub(super) pointer_position: Cell<Option<Point>>,
     }
@@ -84,18 +84,18 @@ mod imp {
         fn constructed(&self) {
             self.parent_constructed();
 
-            self.components
+            self.items
                 .borrow_mut()
-                .push(Component::new(40.0, 40.0, 30.0, 30.0));
-            self.components
+                .push(Item::new(40.0, 40.0, 30.0, 30.0));
+            self.items
                 .borrow_mut()
-                .push(Component::new(10.0, 25.0, 15.0, 15.0));
+                .push(Item::new(10.0, 25.0, 15.0, 15.0));
         }
     }
 
     impl WidgetImpl for Canvas {
         fn snapshot(&self, snapshot: &gtk::Snapshot) {
-            for c in self.components.borrow().iter() {
+            for c in self.items.borrow().iter() {
                 snapshot.append_color(
                     &gdk::RGBA::BLACK,
                     &Rect::new(c.x(), c.y(), c.width(), c.height()),
@@ -155,9 +155,9 @@ impl Canvas {
 
         imp.drag_start.replace(Some(Point::new(x as f32, y as f32)));
 
-        for component in imp.components.borrow().iter() {
-            if component.contains(x as f32, y as f32) {
-                imp.drag_component.replace(Some(component.clone()));
+        for item in imp.items.borrow().iter() {
+            if item.contains(x as f32, y as f32) {
+                imp.drag_item.replace(Some(item.clone()));
                 break;
             }
         }
@@ -172,9 +172,9 @@ impl Canvas {
         let mut dx = pointer_position.x() - drag_start.x();
         let mut dy = pointer_position.y() - drag_start.y();
 
-        if let Some(component) = imp.drag_component.borrow().as_ref() {
-            let mut new_x = component.x() + dx;
-            let mut new_y = component.y() + dy;
+        if let Some(item) = imp.drag_item.borrow().as_ref() {
+            let mut new_x = item.x() + dx;
+            let mut new_y = item.y() + dy;
 
             let mut overshoot_x = 0.0;
             let mut overshoot_y = 0.0;
@@ -182,26 +182,26 @@ impl Canvas {
             let width = self.width() as f32;
             let height = self.height() as f32;
 
-            // Keep the component within the canvas bounds
+            // Keep the item within the canvas bounds
             if new_x < 0.0 {
                 overshoot_x = -new_x;
                 new_x = 0.0;
-            } else if new_x + component.width() > width {
-                overshoot_x = width - (new_x + component.width());
-                new_x = width - component.width();
+            } else if new_x + item.width() > width {
+                overshoot_x = width - (new_x + item.width());
+                new_x = width - item.width();
             }
             if new_y < 0.0 {
                 overshoot_y = -new_y;
                 new_y = 0.0;
-            } else if new_y + component.height() > height {
-                overshoot_y = height - (new_y + component.height());
-                new_y = height - component.height();
+            } else if new_y + item.height() > height {
+                overshoot_y = height - (new_y + item.height());
+                new_y = height - item.height();
             }
 
             dx += overshoot_x;
             dy += overshoot_y;
 
-            component.move_to(new_x, new_y);
+            item.move_to(new_x, new_y);
             self.queue_draw();
         };
 
@@ -213,7 +213,7 @@ impl Canvas {
     fn drag_end(&self, _: f64, _: f64) {
         let imp = self.imp();
 
-        imp.drag_component.replace(None);
+        imp.drag_item.replace(None);
     }
 }
 
