@@ -8,12 +8,10 @@ use gtk::{
     prelude::*,
     subclass::prelude::*,
 };
-use gtk_source::prelude::*;
+use gtk_source::{prelude::*, subclass::prelude::*};
 
 mod imp {
     use std::{cell::Cell, marker::PhantomData};
-
-    use gtk_source::subclass::prelude::BufferImpl;
 
     use super::*;
 
@@ -103,14 +101,8 @@ mod imp {
 
     impl Circuit {
         fn file(&self) -> Option<gio::File> {
-            use glib::translate::{from_glib_none, ToGlibPtr};
-
-            unsafe {
-                // FIXME mark as nullable upstream
-                from_glib_none(gtk_source::ffi::gtk_source_file_get_location(
-                    self.source_file.to_glib_none().0,
-                ))
-            }
+            // FIXME mark the binding method nullable upstream
+            self.source_file.property("location")
         }
 
         fn set_file(&self, file: Option<&gio::File>) {
