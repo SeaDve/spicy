@@ -5,6 +5,7 @@
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/actions/terminal-symbolic.svg</file>
     <file compressed="true" preprocess="xml-stripblanks">icons/scalable/status/starred-symbolic.svg</file>
     <file compressed="true">style.css</file>
+    <file compressed="true" preprocess="xml-stripblanks">ui/canvas.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">ui/output_view.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">ui/plot_view.ui</file>
     <file compressed="true" preprocess="xml-stripblanks">ui/plot_view_filter_row.ui</file>
