@@ -24,6 +24,7 @@
 )]
 
 mod application;
+mod canvas;
 mod circuit;
 mod color_widget;
 mod colors;
